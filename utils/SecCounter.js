@@ -36,3 +36,5 @@ class SecCounter {
     return {days, hours, mins, sec}
   }
 }
+
+module.exports = SecCounter
