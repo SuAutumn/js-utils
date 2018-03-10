@@ -13,17 +13,19 @@ class FileNode {
   }
 
   isFile () {
-    return this.name.indexOf('.') > -1
+    return fs.statSync(this.name).isFile()
   }
 }
 
 // 找到所有文件
 class FileList {
-  constructor(relPath) {
+  constructor(relPath, options = {}) {
     let absPath = path.resolve(__dirname, relPath) 
     this.stack = [] // 文件stack
-    this.filelist = []
-    this.ls(absPath)
+    this.filelist = [] // find all files from root path
+    this.ignorePath = [] // ignore dir
+    this.setIgnore(options.ignore) // set ignore dir
+    this.recurLs(absPath) // recursive dir
   }
 
   ls (absPath) {
@@ -33,18 +35,53 @@ class FileList {
     })
   }
 
-  recurLs () {
+  recurLs (absPath) {
+    this.ls(absPath)
     while (this.stack.length > 0) {
       let curNode = this.stack.pop()
       if (curNode.isFile()) {
         this.filelist.push(curNode.name)
       } else {
-        this.ls(curNode.name)
+        if (!this.isIgnore(curNode.name)) {
+          this.ls(curNode.name)
+        }
       }
     }
   }
+
+  setIgnore (ig = []) {
+    ig.forEach(i => {
+      this.ignorePath.push(absPath(__dirname, i))
+    })
+  }
+
+  isIgnore (absPath) {
+    return this.ignorePath.indexOf(absPath) > -1
+  }
 }
 
-var test = new FileList('../')
-test.recurLs() // 找到所有文件路径
-console.log(test.filelist)
+class ReadFile extends FileList {
+  constructor(relPath, options = {}) {
+    super(relPath, options)
+    this.contentObj = {} // 按文件名记录
+    this.contentStr = '' // 整个文件合并
+    this.readAll()
+  }
+
+  read (absPath) {
+    let content = fs.readFileSync(absPath, 'utf-8')
+    this.contentObj[absPath] = content
+    this.contentStr += content
+  }
+
+  readAll () {
+    this.filelist.forEach(absPath => {
+      this.read(absPath)
+    })
+  }
+}
+
+var test = new ReadFile('../', {ignore: ['../.git']})
+// test.recurLs() // 找到所有文件路径
+// console.log(test.filelist)
+console.log(test.contentStr)
