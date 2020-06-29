@@ -4,12 +4,20 @@
   "description": "1. 倒计时",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "ts-init": "tsc --init",
+    "tsc": "tsc"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "istanbul": "^0.4.5"
+    "@babel/core": "^7.10.3",
+    "@babel/preset-env": "^7.10.3",
+    "@babel/preset-typescript": "^7.10.1",
+    "babel-jest": "^26.1.0",
+    "istanbul": "^0.4.5",
+    "jest": "^26.1.0",
+    "typescript": "^3.9.5"
   }
 }
