@@ -1,9 +1,8 @@
-
-class SecCounter {
-  constructor() {
+export default class SecCounter {
+  constructor () {
     this.timer = undefined
   }
-  
+
   // 启动倒计时
   countStart (second, resolve) {
     if (typeof second !== 'number') {
@@ -33,8 +32,7 @@ class SecCounter {
     hours = Math.floor((second / 3600) % 24)
     mins = Math.floor((second / 60) % 60)
     sec = Math.floor(second % 60)
-    return {days, hours, mins, sec}
+    return { days, hours, mins, sec }
   }
 }
 
-module.exports = SecCounter
