@@ -22,6 +22,7 @@ abstract class Tree<T, K> {
 
     abstract getPItemBySubUniqueId(uniqueId: K): T | undefined
 }
+
 // example
 type TreeItem = {
     id: number;
@@ -30,10 +31,7 @@ type TreeItem = {
 }
 
 export class TestTree extends Tree<TreeItem, number> {
-    private tree: TreeItem
-    // 停止迭代信号
-    private sigBreak = false
-    private path: TreeItem[] = []
+    private readonly tree: TreeItem
 
     constructor(tree: TreeItem) {
         super()
@@ -42,50 +40,47 @@ export class TestTree extends Tree<TreeItem, number> {
 
     iterator(cb: (item: TreeItem) => any) {
         const stack = [this.tree]
-        // 每层children的数量
-        let childrenLen = [1]
-        this.path = []
         while (stack.length > 0) {
             const node = <TreeItem>stack.pop()
-            this.path.push(node)
             cb(node)
-            if (this.sigBreak) {
-                break
-            }
-            // 当前层减1
-            childrenLen[childrenLen.length - 1]--
             if (node.children && node.children.length > 0) {
                 stack.push(...node.children)
-                childrenLen.push(node.children.length)
-            } else {
-                this.path.pop()
-            }
-            // 当前层没有item时候，去除这层数量，path向上再减一个
-            if (childrenLen[childrenLen.length - 1] === 0) {
-                childrenLen.pop()
-                this.path.pop()
             }
         }
     }
 
     getItem(uniqueId: number): TreeItem | undefined {
-        let result: TreeItem | undefined
-        this.iterator(item => {
-            if (item.id === uniqueId) {
-                result = item
-                this.sigBreak = true
-            }
-        })
-        this.sigBreak = false
-        return result
+        return this.getItemPath(uniqueId).pop()
     }
 
     getItemPath(uniqueId: number): TreeItem[] {
-        this.iterator(item => {
-            this.sigBreak = item.id === uniqueId
-        })
-        this.sigBreak = false
-        return this.path;
+        const stack = [[this.tree]]
+        const path = <TreeItem[]>[]
+        while (stack.length > 0) {
+            const node = <TreeItem>stack[stack.length - 1].pop()
+            path.push(node)
+            if (node.id === uniqueId) {
+                break
+            }
+            if (node.children && node.children.length > 0) {
+                // copy children
+                stack.push(node.children.slice(0))
+            } else {
+                path.pop()
+            }
+            let index = stack.length - 1
+            while (index >= 0) {
+                if (stack[index].length === 0) {
+                    path.pop()
+                    stack.pop()
+                } else {
+                    break
+                }
+                index--
+            }
+
+        }
+        return path
     }
 
     insertItem(uniqueId: number, index: number, item: TreeItem) {
