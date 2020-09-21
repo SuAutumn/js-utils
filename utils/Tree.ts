@@ -116,8 +116,7 @@ export class TestTree extends Tree<TreeItem, number> {
 
     getPItemBySubUniqueId(uniqueId: number): TreeItem | undefined {
         const path = this.getItemPath(uniqueId)
-        if (path.length > 1) {
-            return path[path.length - 2]
-        }
+        path.pop()
+        return path.pop()
     }
 }

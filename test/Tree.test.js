@@ -13,9 +13,17 @@ function treeData() {
         id: 2,
         name: '0-2',
         children: [
+          {id: 20, name: '0-2-0'},
           {
             id: 21,
-            name: '0-2-1'
+            name: '0-2-1',
+            children: [
+              {
+                id: 211, name: '0-2-1-1', children: [
+                  {id: 2111, name: '0-2-1-1-1'}
+                ]
+              }
+            ]
           },
           {
             id: 22,
@@ -56,6 +64,8 @@ test('testTree: getItemPath', () => {
   const tree = new TestTree(treeData())
   expect(tree.getItemPath(1).map(item => item.id)).toEqual([0, 1])
   expect(tree.getItemPath(22).map(item => item.id)).toEqual([0, 2, 22])
+  expect(tree.getItemPath(20).map(item => item.id)).toEqual([0, 2, 20])
+  expect(tree.getItemPath(2111).map(item => item.id)).toEqual([0, 2, 21, 211, 2111])
   expect(tree.getItemPath(9999).map(item => item.id)).toEqual([])
   expect(tree.getItemPath().map(item => item.id)).toEqual([])
 })
