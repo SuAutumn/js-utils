@@ -1,6 +1,6 @@
 abstract class Tree<T, K> {
     // 迭代tree
-    abstract iterator(cb: (item: T) => void): void
+    abstract iterator(cb: (item: T, path: T[]) => void): T[]
 
     // 根据标记 获取item
     abstract getItem(uniqueId: K): T | undefined
@@ -32,34 +32,21 @@ type TreeItem = {
 
 export class TestTree extends Tree<TreeItem, number> {
     private readonly tree: TreeItem
+    private sigBreak = false
 
     constructor(tree: TreeItem) {
         super()
         this.tree = tree
     }
 
-    iterator(cb: (item: TreeItem) => any) {
-        const stack = [this.tree]
-        while (stack.length > 0) {
-            const node = <TreeItem>stack.pop()
-            cb(node)
-            if (node.children && node.children.length > 0) {
-                stack.push(...node.children)
-            }
-        }
-    }
-
-    getItem(uniqueId: number): TreeItem | undefined {
-        return this.getItemPath(uniqueId).pop()
-    }
-
-    getItemPath(uniqueId: number): TreeItem[] {
+    iterator(cb: (item: TreeItem, path: TreeItem[]) => any) {
         const stack = [[this.tree]]
         const path = <TreeItem[]>[]
         while (stack.length > 0) {
             const node = <TreeItem>stack[stack.length - 1].pop()
             path.push(node)
-            if (node.id === uniqueId) {
+            cb(node, path)
+            if (this.sigBreak) {
                 break
             }
             if (node.children && node.children.length > 0) {
@@ -68,6 +55,7 @@ export class TestTree extends Tree<TreeItem, number> {
             } else {
                 path.pop()
             }
+            // clear stack and path
             let index = stack.length - 1
             while (index >= 0) {
                 if (stack[index].length === 0) {
@@ -80,6 +68,18 @@ export class TestTree extends Tree<TreeItem, number> {
             }
 
         }
+        return path
+    }
+
+    getItem(uniqueId: number): TreeItem | undefined {
+        return this.getItemPath(uniqueId).pop()
+    }
+
+    getItemPath(uniqueId: number): TreeItem[] {
+        const path = this.iterator((item) => {
+            this.sigBreak = item.id === uniqueId
+        })
+        this.sigBreak = false
         return path
     }
 
@@ -119,4 +119,5 @@ export class TestTree extends Tree<TreeItem, number> {
         path.pop()
         return path.pop()
     }
+
 }
