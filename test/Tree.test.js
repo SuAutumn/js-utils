@@ -46,8 +46,9 @@ function treeData() {
 test('testTree: iterator', () => {
   const tree = new TestTree(treeData())
   let name = ''
-  tree.iterator(item => {
+  tree.iterator((item, path) => {
     name += item.name + ', '
+    console.log(path)
   })
   console.log(name)
 })

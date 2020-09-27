@@ -1,6 +1,6 @@
 abstract class Tree<T, K> {
     // 迭代tree
-    abstract iterator(cb: (item: T, path: T[]) => void): T[]
+    abstract iterator(cb: (item: T, path: readonly T[]) => void): T[]
 
     // 根据标记 获取item
     abstract getItem(uniqueId: K): T | undefined
