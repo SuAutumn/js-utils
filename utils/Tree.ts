@@ -32,6 +32,7 @@ type TreeItem = {
 
 export class TestTree extends Tree<TreeItem, number> {
     private readonly tree: TreeItem
+    // 中断循环信号
     private sigBreak = false
 
     constructor(tree: TreeItem) {

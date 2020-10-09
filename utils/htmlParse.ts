@@ -35,18 +35,5 @@ class TokenType {
 }
 
 const types = {
-    '<': new TokenType('<'),
-    '>': new TokenType('>'),
-    'tag': new TokenType('tag', {
-        set: ['html', 'head', 'meta', 'title', 'style', ]
-    }),
-    'meta': new TokenType('meta'),
-    'title': new TokenType('title'),
-    'link': new TokenType('link'),
-    'script': new TokenType('script'),
-    'style': new TokenType('style'),
-    'body': new TokenType('body'),
-    'div': new TokenType('div'),
-    'p': new TokenType('p'),
-    'span': new TokenType('span'),
+
 }
