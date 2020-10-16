@@ -1,6 +1,6 @@
 import {TestTree} from "../utils/Tree";
 
-function treeData() {
+function treeData () {
   return {
     id: 0,
     name: '0',
