@@ -1,0 +1,14 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "extends": ["eslint-config-standard", "plugin:prettier/recommended"],
+  "plugins": ["@typescript-eslint"],
+  "globals": {},
+  "rules": {
+    "space-before-blocks": 2,
+    "no-unused-vars": 0,
+    "@typescript-eslint/no-unused-vars": 2,
+    "no-undef": 0,
+    "space-infix-ops": ["error"]
+  }
+}
