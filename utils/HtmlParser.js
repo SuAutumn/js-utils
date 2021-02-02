@@ -5,9 +5,9 @@ export default class HtmlParser {
   constructor(html) {
     this.setHtml(html)
     this.node = null // 子node
-    this.parentNodeStack = [] // 父node
+    this.parentNodeStack = [] // 父node stack 用于关联父子关系
     this.text = '' // current text
-    this.tree = []
+    this.tree = [] // 解析之后的树结构
     this.cbs = {}
   }
 
@@ -22,6 +22,10 @@ export default class HtmlParser {
     }
   }
 
+  /**
+   * 初始化状态
+   * @param html {string} - raw html text
+   */
   setHtml(html) {
     this.html = html
     this.status = this.initState(this.html)
@@ -50,9 +54,11 @@ export default class HtmlParser {
     } else if (c === '/') {
       // </div>
       this.status = State.BeforeCloseTag
+      this.backOffset()
     } else if (HtmlParser.isAlphaChar(c)) {
       // a-z
       this.status = State.OpenTagName
+      this.backOffset()
     } else if (HtmlParser.isWhiteSpace(c)) {
       // <    > ignore
     }
@@ -61,6 +67,7 @@ export default class HtmlParser {
   handleOpenTagName(c) {
     if (HtmlParser.isAlphaChar(c)) {
       this.status = State.OpeningTagName
+      this.backOffset()
     }
   }
 
@@ -68,6 +75,7 @@ export default class HtmlParser {
     if (HtmlParser.isWhiteSpace(c) || c === '>' || c === '/') {
       // <div ...>
       this.status = State.ClosedTagName
+      this.backOffset()
     } else {
       // 记录字符
       this.setTextByChar(c)
@@ -80,9 +88,12 @@ export default class HtmlParser {
     this.node.setTypeEle()
     this.resetText()
     this.status = State.BeforeOpenAttributeName
+    this.backOffset()
     // 添加层级关系
     if (this.parentNodeStack.length > 0) {
-      this.parentNodeStack[this.parentNodeStack.length - 1].children.push(this.node)
+      this.parentNodeStack[this.parentNodeStack.length - 1].children.push(
+        this.node
+      )
     }
     this.parentNodeStack.push(this.node)
   }
@@ -94,17 +105,21 @@ export default class HtmlParser {
     } else if (c === '/') {
       // <div/>
       this.status = State.BeforeCloseTag
+      this.backOffset()
     } else if (c === '>') {
       // <div>
       this.status = State.ClosingTag
+      this.backOffset()
     } else {
       this.status = State.OpeningAttributeName
+      this.backOffset()
     }
   }
 
   handleOpeningAttributeName(c) {
     if (HtmlParser.isWhiteSpace(c) || c === '=' || c === '/' || c === '>') {
       this.status = State.ClosedAttributeName
+      this.backOffset()
     } else {
       // 记录字符
       this.setTextByChar(c)
@@ -117,24 +132,30 @@ export default class HtmlParser {
     if (HtmlParser.isWhiteSpace(c)) {
       // <div class style="...">
       this.status = State.BeforeOpenAttributeName
+      this.backOffset()
     } else if (c === '=') {
       this.status = State.BeforeOpenAttributeValue
+      this.backOffset()
     } else if (c === '/') {
       this.status = State.BeforeCloseTag
+      this.backOffset()
     } else if (c === '>') {
       this.status = State.ClosingTag
+      this.backOffset()
     }
   }
 
   handleBeforeOpenAttributeValue(c) {
     if (this._quot) {
       this.status = State.OpeningAttributeValue
+      this.backOffset()
     } else if (HtmlParser.isWhiteSpace(c) || c === '=') {
       // ignore
-    } else if (c === '"' || c === '\'') {
+    } else if (c === '"' || c === "'") {
       this._quot = c
     } else {
       this.status = State.OpeningAttributeValue
+      this.backOffset()
     }
   }
 
@@ -143,6 +164,7 @@ export default class HtmlParser {
     if (this._quot) {
       if (c === this._quot) {
         this.status = State.ClosingAttributeValue
+        this.backOffset()
         this._quot = undefined
       } else {
         this.setTextByChar(c)
@@ -150,6 +172,7 @@ export default class HtmlParser {
     } else if (HtmlParser.isWhiteSpace(c) || c === '/' || c === '>') {
       // class=xxxx
       this.status = State.ClosingAttributeValue
+      this.backOffset()
     } else {
       this.setTextByChar(c)
     }
@@ -159,6 +182,7 @@ export default class HtmlParser {
     this.node.setAttrValue(this.text)
     this.resetText()
     this.status = State.ClosedAttributeValue
+    this.backOffset()
   }
 
   handleClosedAttributeValue(c) {
@@ -167,14 +191,17 @@ export default class HtmlParser {
     } else if (c === '/') {
       // <div/>
       this.status = State.BeforeCloseTag
+      this.backOffset()
     } else if (c === '>') {
       // <div>
       this.status = State.ClosingTag
+      this.backOffset()
     }
   }
 
   handleBeforeCloseTag(c) {
     this.status = State.ClosingTag
+    this.backOffset()
   }
 
   handleClosingTag(c) {
@@ -189,6 +216,7 @@ export default class HtmlParser {
       // ignore
     } else if (c === '>') {
       this.status = State.ClosedTag
+      this.backOffset()
     }
   }
 
@@ -199,7 +227,7 @@ export default class HtmlParser {
       if (this._parentNode) {
         // <div/>
         this._parentNode.setEnd(this.offset, this.html)
-        this.$emit('onClosedTag', {node: this._parentNode})
+        this.$emit('onClosedTag', { node: this._parentNode })
         this._parentNode = null
         this.node = null
       } else {
@@ -211,23 +239,24 @@ export default class HtmlParser {
           if (this.parentNodeStack.length === 0) {
             this.tree.push(node)
           }
-          this.$emit('onClosedTag', {node})
+          this.$emit('onClosedTag', { node })
           this.node = null
         }
       }
     } else if (c === '<') {
       this.status = State.OpenTag
       // 回退1
-      this.setOffset(this.offset - 1)
+      this.backOffset()
     } else {
       this.status = State.Text
+      this.backOffset()
     }
   }
 
   handleText(c) {
     if (c === this._quot) {
       this._quot = undefined
-    } else if (!this._quot && (c === '"' || c === '\'')) {
+    } else if (!this._quot && (c === '"' || c === "'")) {
       // 没有设置过 _quote 才可以
       this._quot = c
     }
@@ -239,13 +268,15 @@ export default class HtmlParser {
       this.resetText()
       // 添加层级关系
       if (this.parentNodeStack.length > 0) {
-        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(this.node)
+        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(
+          this.node
+        )
       } else {
         this.tree.push(this.node)
       }
       this.status = State.OpenTag
       // 回退1
-      this.setOffset(this.offset - 1)
+      this.backOffset()
     } else {
       this.setTextByChar(c)
     }
@@ -258,9 +289,12 @@ export default class HtmlParser {
       node.setName(this.html.slice(this._start, this.offset + 1))
       node.setEnd(this.offset, this.html)
       this.status = State.ClosedTag
+      this.backOffset()
       // 添加层级关系
       if (this.parentNodeStack.length > 0) {
-        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(node)
+        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(
+          node
+        )
       } else {
         this.tree.push(node)
       }
@@ -274,9 +308,12 @@ export default class HtmlParser {
       node.setName(this.html.slice(this._start, this.offset + 1))
       node.setEnd(this.offset, this.html)
       this.status = State.ClosedTag
+      this.backOffset()
       // 添加层级关系
       if (this.parentNodeStack.length > 0) {
-        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(node)
+        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(
+          node
+        )
       } else {
         this.tree.push(node)
       }
@@ -285,57 +322,59 @@ export default class HtmlParser {
 
   exec() {
     while (this.offset < this.length) {
-      const c = this.html[this.offset]
-      if (this.status === State.OpenTag) {
-        this.handleOpenTag(c)
-      }
-      if (this.status === State.OpenCommentTag) {
-        this.handleOpenCommentTag(c)
-      }
-      if (this.status === State.OpenDoctype) {
-        this.handleOpenDoctype(c)
-      }
-      if (this.status === State.OpenTagName) {
-        this.handleOpenTagName(c)
-      }
-      if (this.status === State.OpeningTagName) {
-        this.handleOpeningTagName(c)
-      }
-      if (this.status === State.ClosedTagName) {
-        this.handleClosedTagName(c)
-      }
-      if (this.status === State.BeforeOpenAttributeName) {
-        this.handleBeforeOpenAttributeName(c)
-      }
-      if (this.status === State.OpeningAttributeName) {
-        this.handleOpeningAttributeName(c)
-      }
-      if (this.status === State.ClosedAttributeName) {
-        this.handleClosedAttributeName(c)
-      }
-      if (this.status === State.BeforeOpenAttributeValue) {
-        this.handleBeforeOpenAttributeValue(c)
-      }
-      if (this.status === State.OpeningAttributeValue) {
-        this.handleOpeningAttributeValue(c)
-      }
-      if (this.status === State.ClosingAttributeValue) {
-        this.handleClosingAttributeValue(c)
-      }
-      if (this.status === State.ClosedAttributeValue) {
-        this.handleClosedAttributeValue(c)
-      }
-      if (this.status === State.BeforeCloseTag) {
-        this.handleBeforeCloseTag(c)
-      }
-      if (this.status === State.ClosingTag) {
-        this.handleClosingTag(c)
-      }
-      if (this.status === State.ClosedTag) {
-        this.handleClosedTag(c)
-      }
-      if (this.status === State.Text) {
-        this.handleText(c)
+      const c = this.html.charAt(this.offset)
+      switch (this.status) {
+        case State.Text:
+          this.handleText(c)
+          break
+        case State.OpenDoctype:
+          this.handleOpenDoctype(c)
+          break
+        case State.OpenCommentTag:
+          this.handleOpenCommentTag(c)
+          break
+        case State.OpenTag:
+          this.handleOpenTag(c)
+          break
+        case State.OpenTagName:
+          this.handleOpenTagName(c)
+          break
+        case State.OpeningTagName:
+          this.handleOpeningTagName(c)
+          break
+        case State.ClosedTagName:
+          this.handleClosedTagName(c)
+          break
+        case State.BeforeOpenAttributeName:
+          this.handleBeforeOpenAttributeName(c)
+          break
+        case State.OpeningAttributeName:
+          this.handleOpeningAttributeName(c)
+          break
+        case State.ClosedAttributeName:
+          this.handleClosedAttributeName(c)
+          break
+        case State.BeforeOpenAttributeValue:
+          this.handleBeforeOpenAttributeValue(c)
+          break
+        case State.OpeningAttributeValue:
+          this.handleOpeningAttributeValue(c)
+          break
+        case State.ClosingAttributeValue:
+          this.handleClosingAttributeValue(c)
+          break
+        case State.ClosedAttributeValue:
+          this.handleClosedAttributeValue(c)
+          break
+        case State.BeforeCloseTag:
+          this.handleBeforeCloseTag(c)
+          break
+        case State.ClosingTag:
+          this.handleClosingTag(c)
+          break
+        case State.ClosedTag:
+          this.handleClosedTag(c)
+          break
       }
       this.offset++
     }
@@ -364,13 +403,17 @@ export default class HtmlParser {
     return code >= 97 && code <= 122
   }
 
-
   static isWhiteSpace(c) {
     return c === ' ' || c === '\n' || c === '\t'
   }
 
   setOffset(i) {
     this.offset = i
+  }
+
+  // offset 回退1
+  backOffset() {
+    this.setOffset(this.offset - 1)
   }
 
   nextChar() {
@@ -383,7 +426,7 @@ export default class HtmlParser {
 
   toString() {
     let text = ''
-    this.tree.forEach(node => {
+    this.tree.forEach((node) => {
       text = text + this.toStringHelper(node)
     })
     return text
@@ -401,11 +444,11 @@ export default class HtmlParser {
       text = node.getName()
     }
     if (node.isTextNode()) {
-      return text = node.getName()
+      text = node.getName()
     }
     if (node.isEleNode()) {
       const name = node.getName()
-      const attrs = Object.keys(node.attrs).map(k => {
+      const attrs = Object.keys(node.attrs).map((k) => {
         if (node.attrs[k] === true) {
           return k
         } else {
@@ -422,7 +465,7 @@ export default class HtmlParser {
       }
       // add children
       if (node.children.length > 0) {
-        node.children.forEach(n => {
+        node.children.forEach((n) => {
           text = text + this.toStringHelper(n)
         })
       }
