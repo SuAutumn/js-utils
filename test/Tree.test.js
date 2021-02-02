@@ -1,45 +1,45 @@
-import {TestTree} from "../utils/Tree";
+import { TestTree } from '../utils/Tree'
 
-function treeData () {
+function treeData() {
   return {
     id: 0,
     name: '0',
     children: [
       {
         id: 1,
-        name: '0-1'
+        name: '0-1',
       },
       {
         id: 2,
         name: '0-2',
         children: [
-          {id: 20, name: '0-2-0'},
+          { id: 20, name: '0-2-0' },
           {
             id: 21,
             name: '0-2-1',
             children: [
               {
-                id: 211, name: '0-2-1-1', children: [
-                  {id: 2111, name: '0-2-1-1-1'}
-                ]
-              }
-            ]
+                id: 211,
+                name: '0-2-1-1',
+                children: [{ id: 2111, name: '0-2-1-1-1' }],
+              },
+            ],
           },
           {
             id: 22,
-            name: '0-2-2'
+            name: '0-2-2',
           },
-        ]
+        ],
       },
       {
         id: 3,
-        name: '0-3'
+        name: '0-3',
       },
       {
         id: 4,
-        name: '0-4'
+        name: '0-4',
       },
-    ]
+    ],
   }
 }
 
@@ -63,17 +63,23 @@ test('testTree: getItem', () => {
 
 test('testTree: getItemPath', () => {
   const tree = new TestTree(treeData())
-  expect(tree.getItemPath(1).map(item => item.id)).toEqual([0, 1])
-  expect(tree.getItemPath(22).map(item => item.id)).toEqual([0, 2, 22])
-  expect(tree.getItemPath(20).map(item => item.id)).toEqual([0, 2, 20])
-  expect(tree.getItemPath(2111).map(item => item.id)).toEqual([0, 2, 21, 211, 2111])
-  expect(tree.getItemPath(9999).map(item => item.id)).toEqual([])
-  expect(tree.getItemPath().map(item => item.id)).toEqual([])
+  expect(tree.getItemPath(1).map((item) => item.id)).toEqual([0, 1])
+  expect(tree.getItemPath(22).map((item) => item.id)).toEqual([0, 2, 22])
+  expect(tree.getItemPath(20).map((item) => item.id)).toEqual([0, 2, 20])
+  expect(tree.getItemPath(2111).map((item) => item.id)).toEqual([
+    0,
+    2,
+    21,
+    211,
+    2111,
+  ])
+  expect(tree.getItemPath(9999).map((item) => item.id)).toEqual([])
+  expect(tree.getItemPath().map((item) => item.id)).toEqual([])
 })
 
 test('testTree: deleteItem', () => {
   const tree = new TestTree(treeData())
-  expect(tree.deleteByItem({id: 21})).toEqual(true)
+  expect(tree.deleteByItem({ id: 21 })).toEqual(true)
   expect(tree.deleteByUniqueId(1)).toEqual(true)
   expect(tree.deleteByUniqueId(9999)).toEqual(false)
   expect(tree.deleteByUniqueId()).toEqual(false)
@@ -81,8 +87,8 @@ test('testTree: deleteItem', () => {
 
 test('testTree: insertItem', () => {
   const tree = new TestTree(treeData())
-  expect(tree.insertItem(2, 0, {id: 23, name: '0-2-3'})).toEqual(true)
+  expect(tree.insertItem(2, 0, { id: 23, name: '0-2-3' })).toEqual(true)
   console.log(tree.getItemPath(23))
-  expect(tree.insertItem(9999, 0, {id: 23, name: '0-2-3'})).toEqual(false)
+  expect(tree.insertItem(9999, 0, { id: 23, name: '0-2-3' })).toEqual(false)
   expect(tree.insertItem()).toEqual(false)
 })
