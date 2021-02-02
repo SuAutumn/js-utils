@@ -90,12 +90,7 @@ export default class HtmlParser {
     this.status = State.BeforeOpenAttributeName
     this.backOffset()
     // 添加层级关系
-    if (this.parentNodeStack.length > 0) {
-      this.parentNodeStack[this.parentNodeStack.length - 1].children.push(
-        this.node
-      )
-    }
-    this.parentNodeStack.push(this.node)
+    this.addNodeToParent(this.node)
   }
 
   handleBeforeOpenAttributeName(c) {
@@ -108,8 +103,7 @@ export default class HtmlParser {
       this.backOffset()
     } else if (c === '>') {
       // <div>
-      this.status = State.ClosingTag
-      this.backOffset()
+      this.status = State.ClosedTag
     } else {
       this.status = State.OpeningAttributeName
       this.backOffset()
@@ -140,8 +134,7 @@ export default class HtmlParser {
       this.status = State.BeforeCloseTag
       this.backOffset()
     } else if (c === '>') {
-      this.status = State.ClosingTag
-      this.backOffset()
+      this.status = State.ClosedTag
     }
   }
 
@@ -194,58 +187,42 @@ export default class HtmlParser {
       this.backOffset()
     } else if (c === '>') {
       // <div>
-      this.status = State.ClosingTag
-      this.backOffset()
+      this.status = State.ClosedTag
     }
   }
 
-  handleBeforeCloseTag(c) {
+  handleBeforeCloseTag() {
     this.status = State.ClosingTag
-    this.backOffset()
+    this._tagName = this.lastElement(this.parentNodeStack).getName()
   }
 
   handleClosingTag(c) {
-    if (c === '/') {
-      // ignore
-      // 收尾
-      this._parentNode = this.parentNodeStack.pop()
-      if (this.parentNodeStack.length === 0) {
-        this.tree.push(this._parentNode)
-      }
-    } else if (HtmlParser.isWhiteSpace(c)) {
-      // ignore
-    } else if (c === '>') {
+    if (c === '>') {
       this.status = State.ClosedTag
-      this.backOffset()
     }
   }
 
   // >
   handleClosedTag(c) {
-    if (c === '>') {
-      // update end position
-      if (this._parentNode) {
-        // <div/>
-        this._parentNode.setEnd(this.offset, this.html)
-        this.$emit('onClosedTag', { node: this._parentNode })
-        this._parentNode = null
-        this.node = null
-      } else {
-        // <meta> 检查是否是自闭合标签
-        if (this.node.isSelfCloseTag()) {
-          // 收尾
-          const node = this.parentNodeStack.pop()
-          node.setEnd(this.offset, this.html)
-          if (this.parentNodeStack.length === 0) {
-            this.tree.push(node)
-          }
-          this.$emit('onClosedTag', { node })
-          this.node = null
-        }
+    const node = this.lastElement(this.parentNodeStack)
+    if (node) {
+      // <meta> 检查是否是自闭合标签
+      if (
+        this._tagName ||
+        node.isSelfCloseTag() ||
+        node.isDocNode() ||
+        node.isCommentNode() ||
+        node.isTextNode()
+      ) {
+        this._tagName = undefined
+        // 收尾
+        this.popNodeFromParent()
+        node.setEnd(this.offset - 1, this.html)
+        this.$emit('onClosedTag', { node })
       }
-    } else if (c === '<') {
+    }
+    if (c === '<') {
       this.status = State.OpenTag
-      // 回退1
       this.backOffset()
     } else {
       this.status = State.Text
@@ -261,20 +238,12 @@ export default class HtmlParser {
       this._quot = c
     }
     if (!this._quot && c === '<') {
-      this.node = new HtmlNode(this.offset - this.text.length, this.html)
-      this.node.setTypeText()
-      this.node.setName(this.text)
-      this.node.setEnd(this.offset - 1, this.html)
+      const node = new HtmlNode(this.offset - this.text.length, this.html)
+      node.setTypeText()
+      node.setName(this.text)
       this.resetText()
-      // 添加层级关系
-      if (this.parentNodeStack.length > 0) {
-        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(
-          this.node
-        )
-      } else {
-        this.tree.push(this.node)
-      }
-      this.status = State.OpenTag
+      this.addNodeToParent(node)
+      this.status = State.ClosedTag
       // 回退1
       this.backOffset()
     } else {
@@ -282,46 +251,30 @@ export default class HtmlParser {
     }
   }
 
+  // <!DOCTYPE html>
   handleOpenDoctype(c) {
     if (c === '>') {
-      const node = new HtmlNode(this._start, this.html)
-      node.setTypeDoc()
-      node.setName(this.html.slice(this._start, this.offset + 1))
-      node.setEnd(this.offset, this.html)
+      this.node = new HtmlNode(this._start, this.html)
+      this.node.setTypeDoc()
+      this.node.setName(this.html.slice(this._start, this.offset + 1))
+      this.addNodeToParent(this.node)
       this.status = State.ClosedTag
-      this.backOffset()
-      // 添加层级关系
-      if (this.parentNodeStack.length > 0) {
-        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(
-          node
-        )
-      } else {
-        this.tree.push(node)
-      }
     }
   }
 
+  // html comment
   handleOpenCommentTag(c) {
     if (this.beforeChar() === '-' && c === '>') {
-      const node = new HtmlNode(this._start, this.html)
-      node.setTypeComment()
-      node.setName(this.html.slice(this._start, this.offset + 1))
-      node.setEnd(this.offset, this.html)
+      this.node = new HtmlNode(this._start, this.html)
+      this.node.setTypeComment()
+      this.node.setName(this.html.slice(this._start, this.offset + 1))
+      this.addNodeToParent(this.node)
       this.status = State.ClosedTag
-      this.backOffset()
-      // 添加层级关系
-      if (this.parentNodeStack.length > 0) {
-        this.parentNodeStack[this.parentNodeStack.length - 1].children.push(
-          node
-        )
-      } else {
-        this.tree.push(node)
-      }
     }
   }
 
   exec() {
-    while (this.offset < this.length) {
+    while (this.offset <= this.length) {
       const c = this.html.charAt(this.offset)
       switch (this.status) {
         case State.Text:
@@ -388,6 +341,32 @@ export default class HtmlParser {
     }
     return this.tree.slice(0)
     // console.log(JSON.stringify(this.tree))
+  }
+
+  /**
+   * @param node {HtmlNode}
+   */
+  addNodeToParent(node) {
+    const p = this.lastElement(this.parentNodeStack)
+    if (p) {
+      p.children.push(node)
+    }
+    this.parentNodeStack.push(node)
+  }
+
+  /**
+   * @return {HtmlNode, undefined}
+   */
+  popNodeFromParent() {
+    const node = this.parentNodeStack.pop()
+    if (this.parentNodeStack.length === 0) {
+      this.tree.push(node)
+    }
+    return node
+  }
+
+  lastElement(arr) {
+    return arr[arr.length - 1]
   }
 
   resetText() {

@@ -1,6 +1,10 @@
 import HtmlParser from '../utils/HtmlParser'
 
-const text = `<template>
+const text = `
+<!DOCTYPE html>
+<template>
+  <meta charset="UTF-8" >
+<!--  测试-->
   <div class="login">
     <div class="flex-1">
       <img src="@/assets/pics/login2.png" width="100%" height="100%" class="login2" alt/>
