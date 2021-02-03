@@ -4,11 +4,11 @@ export default class HtmlParser {
    */
   constructor(html) {
     this.setHtml(html)
-    this.node = null // 子node
     this.parentNodeStack = [] // 父node stack 用于关联父子关系
     this.text = '' // current text
     this.tree = [] // 解析之后的树结构
     this.cbs = {}
+    this.symbols = [] // 存放js对称符号
   }
 
   $on(eventName, cb) {
@@ -57,7 +57,7 @@ export default class HtmlParser {
       this.backOffset()
     } else if (HtmlParser.isAlphaChar(c)) {
       // a-z
-      this.status = State.OpenTagName
+      this.status = State.OpeningTagName
       this.backOffset()
     } else if (HtmlParser.isWhiteSpace(c)) {
       // <    > ignore
@@ -83,14 +83,14 @@ export default class HtmlParser {
   }
 
   handleClosedTagName(c) {
-    this.node = new HtmlNode(this._start, this.html)
-    this.node.setName(this.text)
-    this.node.setTypeEle()
+    const node = new HtmlNode(this._start, this.html)
+    node.setName(this.text)
+    node.setTypeEle()
     this.resetText()
     this.status = State.BeforeOpenAttributeName
     this.backOffset()
     // 添加层级关系
-    this.addNodeToParent(this.node)
+    this.addNodeToParent(node)
   }
 
   handleBeforeOpenAttributeName(c) {
@@ -121,15 +121,14 @@ export default class HtmlParser {
   }
 
   handleClosedAttributeName(c) {
-    this.node.setAttrName(this.text)
+    const node = this.lastElement(this.parentNodeStack)
+    node.setAttrName(this.text)
     this.resetText()
     if (HtmlParser.isWhiteSpace(c)) {
       // <div class style="...">
       this.status = State.BeforeOpenAttributeName
-      this.backOffset()
     } else if (c === '=') {
       this.status = State.BeforeOpenAttributeValue
-      this.backOffset()
     } else if (c === '/') {
       this.status = State.BeforeCloseTag
       this.backOffset()
@@ -172,7 +171,8 @@ export default class HtmlParser {
   }
 
   handleClosingAttributeValue(c) {
-    this.node.setAttrValue(this.text)
+    const node = this.lastElement(this.parentNodeStack)
+    node.setAttrValue(this.text)
     this.resetText()
     this.status = State.ClosedAttributeValue
     this.backOffset()
@@ -218,26 +218,23 @@ export default class HtmlParser {
         // 收尾
         this.popNodeFromParent()
         node.setEnd(this.offset - 1, this.html)
-        this.$emit('onClosedTag', { node })
+        this.$emit('onClosedTag', {node})
       }
     }
-    if (c === '<') {
+    const pNode = this.lastElement(this.parentNodeStack)
+    // node === pNode 说明没有移除stack元素，即script node 准备添加元素
+    if (node === pNode && pNode.isScript()) {
+      this.status = State.OpeningScript
+    } else if (c === '<') {
       this.status = State.OpenTag
-      this.backOffset()
     } else {
       this.status = State.Text
-      this.backOffset()
     }
+    this.backOffset()
   }
 
   handleText(c) {
-    if (c === this._quot) {
-      this._quot = undefined
-    } else if (!this._quot && (c === '"' || c === "'")) {
-      // 没有设置过 _quote 才可以
-      this._quot = c
-    }
-    if (!this._quot && c === '<') {
+    if (c === '<') {
       const node = new HtmlNode(this.offset - this.text.length, this.html)
       node.setTypeText()
       node.setName(this.text)
@@ -254,10 +251,10 @@ export default class HtmlParser {
   // <!DOCTYPE html>
   handleOpenDoctype(c) {
     if (c === '>') {
-      this.node = new HtmlNode(this._start, this.html)
-      this.node.setTypeDoc()
-      this.node.setName(this.html.slice(this._start, this.offset + 1))
-      this.addNodeToParent(this.node)
+      const node = new HtmlNode(this._start, this.html)
+      node.setTypeDoc()
+      node.setName(this.html.slice(this._start, this.offset + 1))
+      this.addNodeToParent(node)
       this.status = State.ClosedTag
     }
   }
@@ -265,11 +262,31 @@ export default class HtmlParser {
   // html comment
   handleOpenCommentTag(c) {
     if (this.beforeChar() === '-' && c === '>') {
-      this.node = new HtmlNode(this._start, this.html)
-      this.node.setTypeComment()
-      this.node.setName(this.html.slice(this._start, this.offset + 1))
-      this.addNodeToParent(this.node)
+      const node = new HtmlNode(this._start, this.html)
+      node.setTypeComment()
+      node.setName(this.html.slice(this._start, this.offset + 1))
+      this.addNodeToParent(node)
       this.status = State.ClosedTag
+    }
+  }
+
+  handleOpeningScript(c) {
+    if (c === "'" || c === '"') {
+      this.lastElement(this.symbols) !== c
+        ? this.symbols.push(c)
+        : this.symbols.pop()
+    }
+    if (c === '{' || c === '(' || c === '[') {
+      this.symbols.push(c)
+    }
+    if (c === '}' || c === ')' || c === ']') {
+      this.symbols.pop()
+    }
+    if (c === '<' && this.symbols.length === 0) {
+      this.status = State.Text
+      this.backOffset()
+    } else {
+      this.setTextByChar(c)
     }
   }
 
@@ -328,6 +345,9 @@ export default class HtmlParser {
         case State.ClosedTag:
           this.handleClosedTag(c)
           break
+        case State.OpeningScript:
+          this.handleOpeningScript(c)
+          break
       }
       this.offset++
     }
@@ -379,7 +399,7 @@ export default class HtmlParser {
 
   static isAlphaChar(c) {
     const code = c.charCodeAt(0)
-    return code >= 97 && code <= 122
+    return (code >= 97 && code <= 122) || (code >= 65 && code <= 90)
   }
 
   static isWhiteSpace(c) {
@@ -533,8 +553,8 @@ class HtmlNode {
   }
 
   // 标签内所有内容按照文本处理
-  isKeepInnerText() {
-    if (this.name === 'script' || this.name === 'css') {
+  isScript() {
+    if (this.name === 'script') {
       return true
     }
   }
@@ -572,6 +592,8 @@ class State {
 
   static OpenDoctype = 15
   static OpenCommentTag = 16
+
+  static OpeningScript = 17
 }
 
 const SelfCloseTags = ['meta', 'link', 'br', 'hr', 'img', 'input']
