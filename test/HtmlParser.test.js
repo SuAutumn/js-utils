@@ -381,11 +381,60 @@ export default {
   }
 }
 </style>
-`
+123456`
 
+text = `<!DOCTYPE html>
+<html lang=en>
+	<head>
+		<meta charset=utf-8>
+		<meta http-equiv=X-UA-Compatible content="IE=edge">
+		<meta name=viewport content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
+		<title>支付</title>
+		<link href="./css/app.626d059f.css" rel="preload" as="style">
+		<link href="./css/chunk-vendors.54eb7941.css" rel="preload" as="style">
+		<link href="./js/app.1af16fa4.js" rel="preload" as="script">
+		<link href="./js/chunk-vendors.78d527af.js" rel="preload" as="script">
+		<link href="./css/chunk-vendors.54eb7941.css" rel="stylesheet">
+		<link href="./css/app.626d059f.css" rel="stylesheet">
+	</head>
+	<body><noscript><strong>We're sorry but 支付 doesn't work properly without JavaScript enabled. Please enable it to
+				continue.</strong></noscript>
+		<div id=app></div>
+		<script>
+			var userAgent = navigator.userAgent;
+			if (userAgent.indexOf('AlipayClient') > -1) {
+				// 支付宝小程序的 JS-SDK 防止 404 需要动态加载，如果不需要兼容支付宝小程序，则无需引用此 JS 文件。
+				document.writeln('<script src="https://appx/web-view.min.js"' + '>' + '<' + '/' + 'script>');
+			} else if (/QQ/i.test(userAgent) && /miniProgram/i.test(userAgent)) {
+				// QQ 小程序
+				document.write(
+					'<script type="text/javascript" src="https://qqq.gtimg.cn/miniprogram/webview_jssdk/qqjssdk-1.0.0.js"><\/script>'
+				);
+			} else if (/miniProgram/i.test(userAgent) && /micromessenger/i.test(userAgent)) {
+				// 微信小程序 JS-SDK 如果不需要兼容微信小程序，则无需引用此 JS 文件。
+				document.write('<script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.4.0.js"><\/script>');
+			} else if (/toutiaomicroapp/i.test(userAgent)) {
+				// 头条小程序 JS-SDK 如果不需要兼容头条小程序，则无需引用此 JS 文件。
+				document.write(
+					'<script type="text/javascript" src="https://s3.pstatp.com/toutiao/tmajssdk/jssdk-1.0.1.js"><\/script>');
+			} else if (/swan/i.test(userAgent)) {
+				// 百度小程序 JS-SDK 如果不需要兼容百度小程序，则无需引用此 JS 文件。
+				document.write(
+					'<script type="text/javascript" src="https://b.bdstatic.com/searchbox/icms/searchbox/js/swan-2.0.18.js"><\/script>'
+				);
+			} else if (/quickapp/i.test(userAgent)) {
+				// quickapp
+				document.write('<script type="text/javascript" src="https://quickapp/jssdk.webview.min.js"><\/script>');
+			}
+		</script>
+		<script src="https://js.cdn.aliyun.dcloud.net.cn/dev/uni-app/uni.webview.1.5.2.js"> </script> <script src="./js/chunk-vendors.78d527af.js">
+		 </script> <script src="./js/app.1af16fa4.js"> </script> </body> </html>
+`
 test('HtmlParser', () => {
-  const p = new HtmlParser(text)
+  const p = new HtmlParser()
+  p.setHtml(text)
   console.log(JSON.stringify(p.exec()))
   const newText = p.toString()
   console.log(newText)
+  expect(true)
 })

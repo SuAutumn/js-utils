@@ -1,9 +1,11 @@
 export default class HtmlParser {
   /**
-   * @param html {string}
+   * @param html {string, undefined}
    */
   constructor(html) {
-    this.setHtml(html)
+    if (typeof html === 'string') {
+      this.setHtml(html)
+    }
     this.parentNodeStack = [] // 父node stack 用于关联父子关系
     this.text = '' // current text
     this.tree = [] // 解析之后的树结构
@@ -218,7 +220,7 @@ export default class HtmlParser {
         // 收尾
         this.popNodeFromParent()
         node.setEnd(this.offset - 1, this.html)
-        this.$emit('onClosedTag', {node})
+        this.$emit('onClosedTag', { node })
       }
     }
     const pNode = this.lastElement(this.parentNodeStack)
@@ -227,14 +229,15 @@ export default class HtmlParser {
       this.status = State.OpeningScript
     } else if (c === '<') {
       this.status = State.OpenTag
-    } else {
+    } else if (c) {
+      // 去除 c 为 undefined
       this.status = State.Text
     }
     this.backOffset()
   }
 
   handleText(c) {
-    if (c === '<') {
+    if (c === '<' || (c === undefined && this.text)) {
       const node = new HtmlNode(this.offset - this.text.length, this.html)
       node.setTypeText()
       node.setName(this.text)
@@ -291,6 +294,9 @@ export default class HtmlParser {
   }
 
   exec() {
+    if (typeof this.html !== 'string') {
+      throw new Error('未设置html')
+    }
     while (this.offset <= this.length) {
       const c = this.html.charAt(this.offset)
       switch (this.status) {
@@ -352,12 +358,9 @@ export default class HtmlParser {
       this.offset++
     }
     if (this.text.length > 0) {
-      const node = new HtmlNode(this.offset - this.text.length, this.html)
-      node.setName(this.text)
-      this.resetText()
-      node.setTypeText()
-      node.setEnd(this.offset - 1, this.html)
-      this.tree.push(node)
+      // 收尾
+      this.handleText()
+      this.handleClosedTag()
     }
     return this.tree.slice(0)
     // console.log(JSON.stringify(this.tree))
