@@ -140,13 +140,11 @@ export default class HtmlParser {
   }
 
   handleBeforeOpenAttributeValue(c) {
-    if (this._quot) {
-      this.status = State.OpeningAttributeValue
-      this.backOffset()
-    } else if (HtmlParser.isWhiteSpace(c) || c === '=') {
+    if (HtmlParser.isWhiteSpace(c) || c === '=') {
       // ignore
     } else if (c === '"' || c === "'") {
-      this._quot = c
+      this.status = State.OpeningAttributeValue
+      this.symbols.push(c)
     } else {
       this.status = State.OpeningAttributeValue
       this.backOffset()
@@ -155,11 +153,11 @@ export default class HtmlParser {
 
   handleOpeningAttributeValue(c) {
     // class="xxxx"
-    if (this._quot) {
-      if (c === this._quot) {
+    if (this.symbols.length > 0) {
+      if (this.lastElement(this.symbols) === c) {
         this.status = State.ClosingAttributeValue
         this.backOffset()
-        this._quot = undefined
+        this.symbols.pop()
       } else {
         this.setTextByChar(c)
       }
