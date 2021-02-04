@@ -225,13 +225,15 @@ export default class HtmlParser {
     // node === pNode 说明没有移除stack元素，即script node 准备添加元素
     if (node === pNode && pNode.isScript()) {
       this.status = State.OpeningScript
+      this.backOffset()
     } else if (c === '<') {
       this.status = State.OpenTag
+      this.backOffset()
     } else if (c) {
       // 去除 c 为 undefined
       this.status = State.Text
+      this.backOffset()
     }
-    this.backOffset()
   }
 
   handleText(c) {
@@ -476,6 +478,7 @@ export default class HtmlParser {
 }
 
 class HtmlNode {
+  static currentAttrName = ''
   constructor(start, html) {
     // this.html = html
     this.start = start
@@ -483,7 +486,6 @@ class HtmlNode {
     this.name = ''
     this.type = '' // comment element text
     this.attrs = {}
-    this._currentAttrName = ''
     this.children = []
   }
 
@@ -498,12 +500,12 @@ class HtmlNode {
 
   setAttrName(name) {
     this.attrs[name] = true
-    this._currentAttrName = name
+    HtmlNode.currentAttrName = name
   }
 
   setAttrValue(value) {
-    if (this._currentAttrName) {
-      this.attrs[this._currentAttrName] = value
+    if (HtmlNode.currentAttrName) {
+      this.attrs[HtmlNode.currentAttrName] = value
     }
   }
 
@@ -557,16 +559,6 @@ class HtmlNode {
   isScript() {
     if (this.name === 'script') {
       return true
-    }
-  }
-
-  toString() {
-    return {
-      name: this.name,
-      start: this.start,
-      end: this.end,
-      attrs: this.attrs,
-      text: text.slice(this.start, this.end + 1),
     }
   }
 }
