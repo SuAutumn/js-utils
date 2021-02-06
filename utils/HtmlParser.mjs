@@ -17,7 +17,7 @@ export default class HtmlParser {
     this.cbs[eventName] = cb
   }
 
-  // 支持事件 onClosedTag
+  // 支持事件 onClosedTag, onClosedTagName
   $emit(eventName, params) {
     if (typeof this.cbs[eventName] === 'function') {
       this.cbs[eventName](params)
@@ -219,6 +219,8 @@ export default class HtmlParser {
         this.popNodeFromParent()
         node.setEnd(this.offset - 1, this.html)
         this.$emit('onClosedTag', { node })
+      } else {
+        this.$emit('onOpenedTag', { node })
       }
     }
     const pNode = this.lastElement(this.parentNodeStack)

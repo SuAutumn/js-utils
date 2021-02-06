@@ -2,6 +2,7 @@ import * as https from 'https'
 import * as fs from 'fs'
 
 import HtmlParser from '../utils/HtmlParser.mjs'
+import { info } from 'console'
 
 function getPromise() {
   let success, fail
@@ -20,6 +21,10 @@ function genRandomString(len = 5) {
     r += charts.charAt(parseInt(Math.random() * 61))
   }
   return r
+}
+
+function lastEle(arr = []) {
+  return arr[arr.length - 1]
 }
 
 class Html {
@@ -122,71 +127,125 @@ weibo
     p.$on('onClosedTag', ({ node }) => {
       if (node.isScript()) {
         node.children.forEach(async (child) => {
-          if (child.isTextNode()) {
-            let text = child.getName()
-            let i = 0
-            const len = text.length
-            const symbols = []
-            let start = i
-            while (i < len) {
-              const c = text.charAt(i)
-              if (c === '{') {
-                if (symbols.length === 0) {
-                  start = i
-                }
-                symbols.push(c)
-              }
-              if (c === '}') {
-                symbols.pop()
-                if (symbols.length === 0) {
-                  text = text.slice(start, i + 1)
-                }
-              }
-              i++
-            }
-            let json = null
-            try {
-              json = JSON.parse(text)
-            } catch (e) {
-              // await Html.write(
-              //   './assets/weibo-' + genRandomString() + '.json',
-              //   text + '\n\n' + child.getName()
-              // )
-              // console.log(text)
-            }
-            if (json && json.html) {
-              const cp = new HtmlParser(json.html)
-              cp.$on('onClosedTag', ({ node }) => {
-                if (
-                  node.attrs['node-type'] === 'feed_list' &&
-                  node.attrs['module-type'] === 'feed'
-                ) {
-                  Html.write(
-                    './assets/weibo-' + genRandomString() + '.json',
-                    JSON.stringify(node)
-                  )
-                }
-              })
-              cp.exec()
-            }
-          }
+          console.time()
+          const w = new WeiboHtml(child)
+          w.htmlParser()
+          console.timeEnd()
         })
       }
     })
-    await weibo.write()
+    p.exec()
   })
   .catch((e) => console.log('weibo error: ', e))
 
-// let text = ''
-// test('HtmlParser', () => {
-//   console.time('exec')
-//   const p = new HtmlParser()
-//   p.setHtml(text)
-//   console.log(JSON.stringify(p.exec()))
-//   console.timeEnd('exec')
-//   console.time('to string')
-//   const newText = p.toString()
-//   console.timeEnd('to string')
-//   console.log(newText)
-//   expect(true)
-// })
+class WeiboHtml {
+  constructor(node) {
+    this.htmlJson = null
+    this.getHtml(node)
+  }
+
+  /**
+   * 从js字符串中提取json字符串
+   * @param node {HtmlNode}
+   */
+  getHtml(node) {
+    if (node.isTextNode()) {
+      let text = node.getName()
+      let i = 0
+      const len = text.length
+      const symbols = []
+      let start = i
+      while (i < len) {
+        const c = text.charAt(i)
+        if (c === '{') {
+          if (symbols.length === 0) {
+            start = i
+          }
+          symbols.push(c)
+        }
+        if (c === '}') {
+          symbols.pop()
+          if (symbols.length === 0) {
+            text = text.slice(start, i + 1)
+          }
+        }
+        i++
+      }
+      try {
+        this.htmlJson = JSON.parse(text)
+      } catch (e) {}
+    }
+  }
+
+  htmlParser() {
+    const json = this.htmlJson
+    const infoList = []
+    let rootNode = null
+    if (json && json.html) {
+      const cp = new HtmlParser(json.html)
+      cp.$on('onOpenedTag', ({ node }) => {
+        if (node.attrs['node-type'] === 'feed_list') {
+          rootNode = node
+        }
+      })
+      cp.$on('onClosedTag', ({ node }) => {
+        if (rootNode === node) {
+          rootNode = null
+        }
+        if (rootNode) {
+          if ('WB_info'.indexOf(node.attrs.class) > -1) {
+            infoList.push({
+              nickname: this.getContent(node),
+            })
+          }
+          if (node.attrs['node-type'] === 'feed_list_item_date') {
+            const info = lastEle(infoList)
+            info.date = node.attrs.title
+          }
+          if (node.attrs['node-type'] === 'feed_list_content') {
+            const info = lastEle(infoList)
+            info.content = this.getContent(node)
+          }
+        }
+        // if (node.attrs['node-type'] === 'feed_list_reason') {
+        //   info.relativeWeibo =
+        // }
+        // if (
+        //   node.attrs['node-type'] === 'feed_list' &&
+        //   node.attrs['module-type'] === 'feed'
+        // ) {
+        //   Html.write(
+        //     './assets/weibo-' + genRandomString() + '.json',
+        //     JSON.stringify(node)
+        //   )
+        // }
+      })
+      cp.exec()
+    }
+    if (infoList.length > 0) {
+      Html.write(
+        './assets/weibo-' + genRandomString() + '.json',
+        JSON.stringify(infoList)
+      )
+    }
+    return infoList
+  }
+
+  getContent(node) {
+    let text = ''
+    if (node.isTextNode()) {
+      text = node.getName().trim()
+    }
+    if (node.getName() === 'img') {
+      text += this.handleImgTag(node)
+    }
+    node.children.forEach((n) => {
+      text += this.getContent(n)
+    })
+    return text
+  }
+
+  handleImgTag(node) {
+    return node.attrs.title || ''
+  }
+}
