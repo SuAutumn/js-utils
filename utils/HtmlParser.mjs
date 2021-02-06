@@ -511,7 +511,7 @@ class HtmlNode {
 
   setEnd(end, html) {
     this.end = end
-    this.rawText = html.slice(this.start, this.end + 1)
+    // this.rawText = html.slice(this.start, this.end + 1)
   }
 
   setStart(start) {
