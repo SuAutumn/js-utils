@@ -7,7 +7,7 @@
     "test": "jest",
     "tsc": "tsc",
     "watch": "tsc --watch",
-    "hp-test": "node --experimental-modules ./test/HtmlParser.test.mjs"
+    "hp-test": "node --experimental-modules ./test/Weibo.test.mjs"
   },
   "keywords": [],
   "author": "",

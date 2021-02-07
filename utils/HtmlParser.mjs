@@ -198,7 +198,29 @@ export default class HtmlParser {
 
   handleClosingTag(c) {
     if (c === '>') {
-      this.status = State.ClosedTag
+      // <img xxxxx/> self close
+      if (this.text === '') {
+        this.status = State.ClosedTag
+      } else {
+        if (SelfCloseTags.indexOf(this.text) === -1) {
+          // 非自闭和标签
+          if (this.text !== this._tagName) {
+            this.fixOrderErrInParentStack(this.text)
+          }
+          this.status = State.ClosedTag
+        } else {
+          // 自闭和标签直接舍弃
+          if (this.nextChar()) {
+            // 防止溢出
+            this.status = this.initState(this.nextChar())
+          }
+        }
+      }
+      this.resetText()
+    } else if (HtmlParser.isWhiteSpace(c)) {
+      // ignore
+    } else {
+      this.setTextByChar(c)
     }
   }
 
@@ -477,11 +499,22 @@ export default class HtmlParser {
     }
     return text
   }
+
+  fixOrderErrInParentStack(tagName) {
+    let len = this.parentNodeStack.length
+    while (len > 0) {
+      if (this.lastElement(this.parentNodeStack).getName() === tagName) {
+        break
+      }
+      this.parentNodeStack.pop()
+      len--
+    }
+  }
 }
 
 class HtmlNode {
   static currentAttrName = ''
-  constructor(start, html) {
+  constructor(start) {
     // this.html = html
     this.start = start
     this.end = start
@@ -511,7 +544,7 @@ class HtmlNode {
     }
   }
 
-  setEnd(end, html) {
+  setEnd(end) {
     this.end = end
     // this.rawText = html.slice(this.start, this.end + 1)
   }
@@ -561,6 +594,28 @@ class HtmlNode {
   isScript() {
     if (this.name === 'script') {
       return true
+    }
+  }
+
+  querySelect(cb) {
+    let r = null
+    for (let i = 0, len = this.children.length; i < len; i++) {
+      const node = this.children[i]
+      if (cb(node)) {
+        r = node
+      } else {
+        r = node.querySelect(cb)
+      }
+      if (r) break
+    }
+    return r
+  }
+
+  toString() {
+    return {
+      name: this.name,
+      type: this.type,
+      attrs: this.attrs,
     }
   }
 }
