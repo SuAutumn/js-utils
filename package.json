@@ -6,7 +6,8 @@
   "scripts": {
     "test": "jest",
     "tsc": "tsc",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "hp-test": "node --experimental-modules ./test/HtmlParser.test.mjs"
   },
   "keywords": [],
   "author": "",
