@@ -224,7 +224,7 @@ export default class HtmlParser {
     }
   }
 
-  // >
+  // >x
   handleClosedTag(c) {
     const node = this.lastElement(this.parentNodeStack)
     if (node) {
@@ -261,7 +261,7 @@ export default class HtmlParser {
   }
 
   handleText(c) {
-    if (c === '<' || (c === undefined && this.text)) {
+    if (c === '<' || c === '') {
       const node = new HtmlNode(this.offset - this.text.length, this.html)
       node.setTypeText()
       node.setName(this.text)
@@ -380,11 +380,6 @@ export default class HtmlParser {
           break
       }
       this.offset++
-    }
-    if (this.text.length > 0) {
-      // 收尾
-      this.handleText()
-      this.handleClosedTag()
     }
     return this.tree.slice(0)
     // console.log(JSON.stringify(this.tree))
@@ -544,9 +539,9 @@ class HtmlNode {
     }
   }
 
-  setEnd(end) {
+  setEnd(end, html) {
     this.end = end
-    // this.rawText = html.slice(this.start, this.end + 1)
+    this.rawText = html.slice(this.start, this.end + 1)
   }
 
   setStart(start) {
