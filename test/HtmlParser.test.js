@@ -4,8 +4,11 @@ test('HtmlParser: <!DOCTYPE html>', () => {
   const p = new HtmlParser(`<!DOCTYPE html>`)
   const tree = p.exec()
   expect(tree.length).toBe(1)
-  expect(tree[0].getName()).toEqual(p.html)
-  expect(tree[0].isDocNode()).toBeTruthy()
+  const node = tree[0]
+  expect(node.getName()).toEqual(p.html)
+  expect(node.isDocNode()).toBeTruthy()
+  expect(node.start).toBe(0)
+  expect(node.end).toBe(p.html.length - 1)
 })
 
 test('HtmlParser: <!-- comment --><!-- comment -->', () => {

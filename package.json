@@ -7,7 +7,8 @@
     "test": "jest",
     "tsc": "tsc",
     "watch": "tsc --watch",
-    "hp-test": "node --experimental-modules ./test/Weibo.test.mjs"
+    "hp-test": "node --experimental-modules ./test/Weibo.test.mjs",
+    "build": "./build/build.sh"
   },
   "keywords": [],
   "author": "",

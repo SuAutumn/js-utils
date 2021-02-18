@@ -1,7 +1,7 @@
 import * as https from 'https'
 import * as fs from 'fs'
 
-import HtmlParser from '../utils/HtmlParser.mjs'
+import HtmlParser from '../dist/mjs/HtmlParser.mjs'
 
 function getPromise() {
   let success, fail
@@ -146,6 +146,7 @@ new Html({
         for (let i = 0, len = node.children.length; i < len; i++) {
           const child = node.children[i]
           const w = new WeiboHtml(child)
+          // 没有效果
           await w.htmlParser()
         }
       }
