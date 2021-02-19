@@ -25,6 +25,35 @@ function genRandomString(len = 5) {
 function lastEle(arr = []) {
   return arr[arr.length - 1]
 }
+/**
+ * 获取str在text中位置
+ * @param text {string}
+ * @param str {string}
+ */
+function indexOf(text, str) {
+  let start = 0
+  const len = text.length
+  while (start < len) {
+    const c = text.charAt(start)
+    if (c === str) {
+      break
+    }
+    start++
+  }
+  return start
+}
+
+function lastIndexOf(text, str) {
+  let end = text.length
+  while (end > 0) {
+    const c = text.charAt(end - 1)
+    if (c === str) {
+      break
+    }
+    end--
+  }
+  return end
+}
 
 class Html {
   constructor({ url, output }) {
@@ -87,6 +116,9 @@ class Html {
     console.log('write done')
   }
 
+  /**
+   * @returns {Promise<HtmlParser>}
+   */
   async init() {
     try {
       const chunk = await Html.getHtmlFromUrl(this.url)
@@ -120,91 +152,8 @@ class Html {
 //   })
 //   .catch((e) => console.log('v2ex error: ', e))
 
-const targetList = [
-  {
-    url: 'https://weibo.com/u/1350995007?is_all=1',
-    output: './assets/weibo-naza.json',
-  },
-  {
-    url: 'https://weibo.com/u/1669879400?is_all=1',
-    output: './assets/weibo-reba.json',
-  },
-  {
-    url: 'https://weibo.com/yangmiblog?is_all=1',
-    output: './assets/weibo-yangmi.json',
-  },
-  {
-    url: 'https://weibo.com/u/1809054937',
-    output: './assets/weibo-liqing.json',
-  },
-]
-
-for (let i = 0; i < targetList.length; i++) {
-  const h = new Html(targetList[i])
-  h.init()
-    .then(async (p) => {
-      p.$on('onClosedTag', async ({ node }) => {
-        if (node.isScript()) {
-          node.children.forEach(async (child) => {
-            const w = new WeiboHtml(child)
-            const infoList = await w.htmlParser()
-            if (infoList.length > 0) {
-              h.write(JSON.stringify(infoList))
-            }
-          })
-        }
-      })
-      p.exec()
-    })
-    .catch((e) => console.log('weibo error: ', e))
-}
-// const naza = new Html({
-//   url: 'https://weibo.com/u/1350995007?is_all=1',
-//   output: './assets/weibo-naza.json',
-// })
-// naza
-//   .init()
-//   .then(async (p) => {
-//     p.$on('onClosedTag', async ({ node }) => {
-//       if (node.isScript()) {
-//         node.children.forEach(async (child) => {
-//           const w = new WeiboHtml(child)
-//           const infoList = await w.htmlParser()
-//           if (infoList.length > 0) {
-//             naza.write(JSON.stringify(infoList))
-//           }
-//         })
-//       }
-//     })
-//     p.exec()
-//   })
-//   .catch((e) => console.log('weibo error: ', e))
-
-// const reba = new Html({
-//   url: 'https://weibo.com/u/1669879400?is_all=1',
-//   output: './assets/weibo-reba.json',
-// })
-
-// reba
-//   .init()
-//   .then((p) => {
-//     p.$on('onClosedTag', async ({ node }) => {
-//       if (node.isScript()) {
-//         for (let i = 0, len = node.children.length; i < len; i++) {
-//           const child = node.children[i]
-//           const w = new WeiboHtml(child)
-//           const infoList = await w.htmlParser()
-//           if (infoList.length > 0) {
-//             reba.write(JSON.stringify(infoList))
-//           }
-//         }
-//       }
-//     })
-//     p.exec()
-//   })
-//   .catch((e) => console.log('weibo error: ', e))
-
 class WeiboHtml {
+  static SCRIPT_CONTENT = 'pl.content.homeFeed.index'
   constructor(node) {
     this.htmlJson = null
     this.getHtml(node)
@@ -217,33 +166,25 @@ class WeiboHtml {
   getHtml(node) {
     if (node.isTextNode()) {
       const text = node.getName()
-      let start = 0
-      const len = text.length
-      while (start < len) {
-        const c = text.charAt(start)
-        if (c === '{') {
-          break
-        }
-        start++
-      }
-      let end = len
-      while (end > 0) {
-        const c = text.charAt(end - 1)
-        if (c === '}') {
-          break
-        }
-        end--
-      }
+      const start = indexOf(text, '{')
+      const end = lastIndexOf(text, '}')
       try {
         this.htmlJson = JSON.parse(text.slice(start, end))
       } catch (e) {}
     }
   }
 
-  async htmlParser() {
+  /**
+   * 检查是否含有内容
+   */
+  isContent(json) {
+    return json.ns && json.ns === WeiboHtml.SCRIPT_CONTENT
+  }
+
+  htmlParser() {
     const json = this.htmlJson
     const infoList = []
-    if (json && json.html) {
+    if (json && this.isContent(json) && json.html) {
       const cp = new HtmlParser(json.html)
       cp.$on('onClosedTag', ({ node }) => {
         if (node.attrs.class === 'WB_detail') {
@@ -285,6 +226,10 @@ class WeiboHtml {
     return node.attrs.title || ''
   }
 
+  /**
+   * 获取微博正文内容
+   * @param node {HtmlNode}
+   */
   getWeibo(node) {
     const info = {}
     const nickname = node.querySelect(
@@ -335,3 +280,62 @@ class WeiboHtml {
     return info
   }
 }
+async function main() {
+  const targetList = [
+    {
+      url: 'https://weibo.com/u/1350995007?is_all=1',
+      output: './assets/weibo-naza.json',
+    },
+    {
+      url: 'https://weibo.com/u/1669879400?is_all=1',
+      output: './assets/weibo-reba.json',
+    },
+    {
+      url: 'https://weibo.com/yangmiblog?is_all=1',
+      output: './assets/weibo-yangmi.json',
+    },
+    {
+      url: 'https://weibo.com/u/1809054937',
+      output: './assets/weibo-liqing.json',
+    },
+  ]
+
+  for (let i = 0; i < targetList.length; i++) {
+    const h = new Html(targetList[i])
+    // try {
+    //   console.time(i)
+    //   const p = await h.init()
+    //   p.$on('onClosedTag', ({ node }) => {
+    //     if (node.isScript()) {
+    //       node.children.forEach((child) => {
+    //         const w = new WeiboHtml(child)
+    //         const infoList = w.htmlParser()
+    //         if (infoList.length > 0) {
+    //           h.write(JSON.stringify(infoList))
+    //         }
+    //       })
+    //     }
+    //   })
+    //   p.exec()
+    //   console.timeEnd(i)
+    // } catch (e) {
+    //   console.log('weibo error: ', e)
+    // }
+    h.init().then((p) => {
+      p.$on('onClosedTag', ({ node }) => {
+        if (node.isScript()) {
+          node.children.forEach((child) => {
+            const w = new WeiboHtml(child)
+            const infoList = w.htmlParser()
+            if (infoList.length > 0) {
+              h.write(JSON.stringify(infoList))
+            }
+          })
+        }
+      })
+      p.exec()
+    })
+  }
+}
+
+main()
