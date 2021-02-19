@@ -246,8 +246,8 @@ export default class HtmlParser {
       }
     }
     const pNode = this.lastElement(this.parentNodeStack)
-    // node === pNode 说明没有移除stack元素，即script node 准备添加元素
     if (node === pNode && pNode.isScript()) {
+      // node === pNode 说明没有移除stack元素，即script node 准备添加script内容
       this.status = State.OpeningScript
       this.backOffset()
     } else if (c === '<') {

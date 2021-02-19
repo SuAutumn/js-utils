@@ -9,6 +9,7 @@ test('HtmlParser: <!DOCTYPE html>', () => {
   expect(node.isDocNode()).toBeTruthy()
   expect(node.start).toBe(0)
   expect(node.end).toBe(p.html.length - 1)
+  expect(p.toString()).toEqual(p.html)
 })
 
 test('HtmlParser: <!-- comment --><!-- comment -->', () => {
@@ -17,6 +18,7 @@ test('HtmlParser: <!-- comment --><!-- comment -->', () => {
   expect(tree.length).toBe(2)
   expect(tree[0].getName()).toEqual('<!-- comment -->')
   expect(tree[0].isCommentNode()).toBeTruthy()
+  expect(p.toString()).toEqual(p.html)
 })
 
 test('HtmlParser: text', () => {
@@ -28,6 +30,7 @@ test('HtmlParser: text', () => {
   expect(node.isTextNode()).toBeTruthy()
   expect(node.start).toBe(0)
   expect(node.end).toBe(p.html.length - 1)
+  expect(p.toString()).toEqual(p.html)
 })
 
 test('HtmlParser: <div class="bg-white"><div style="color: red;">text</div></div>', () => {
@@ -49,6 +52,7 @@ test('HtmlParser: <div class="bg-white"><div style="color: red;">text</div></div
   const t = n1.children[0]
   expect(t.isTextNode()).toBeTruthy()
   expect(t.getName()).toEqual('text')
+  expect(p.toString()).toEqual(p.html)
 })
 
 test('HtmlParser: <div><span>hello</div>', () => {
@@ -60,4 +64,5 @@ test('HtmlParser: <div><span>hello</div>', () => {
   const span = n0.children[0]
   expect(span.children[0].getName()).toEqual('hello')
   expect(span.start === span.end).toBeTruthy()
+  expect(p.toString()).toEqual('<div><span>hello</span></div>')
 })
