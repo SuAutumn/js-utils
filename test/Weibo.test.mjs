@@ -78,8 +78,12 @@ class Html {
     return p
   }
 
-  async write() {
-    await Html.write(this.output, JSON.stringify(this.htmlParser.exec()))
+  /**
+   * 写入文件
+   * @param data {string} - 内容
+   */
+  async write(data) {
+    await Html.write(this.output, data)
     console.log('write done')
   }
 
@@ -116,18 +120,59 @@ class Html {
 //   })
 //   .catch((e) => console.log('v2ex error: ', e))
 
-// const weibo = new Html({
+const targetList = [
+  {
+    url: 'https://weibo.com/u/1350995007?is_all=1',
+    output: './assets/weibo-naza.json',
+  },
+  {
+    url: 'https://weibo.com/u/1669879400?is_all=1',
+    output: './assets/weibo-reba.json',
+  },
+  {
+    url: 'https://weibo.com/yangmiblog?is_all=1',
+    output: './assets/weibo-yangmi.json',
+  },
+  {
+    url: 'https://weibo.com/u/1809054937',
+    output: './assets/weibo-liqing.json',
+  },
+]
+
+for (let i = 0; i < targetList.length; i++) {
+  const h = new Html(targetList[i])
+  h.init()
+    .then(async (p) => {
+      p.$on('onClosedTag', async ({ node }) => {
+        if (node.isScript()) {
+          node.children.forEach(async (child) => {
+            const w = new WeiboHtml(child)
+            const infoList = await w.htmlParser()
+            if (infoList.length > 0) {
+              h.write(JSON.stringify(infoList))
+            }
+          })
+        }
+      })
+      p.exec()
+    })
+    .catch((e) => console.log('weibo error: ', e))
+}
+// const naza = new Html({
 //   url: 'https://weibo.com/u/1350995007?is_all=1',
-//   output: './assets/weibo.json',
+//   output: './assets/weibo-naza.json',
 // })
-// weibo
+// naza
 //   .init()
 //   .then(async (p) => {
-//     p.$on('onClosedTag', ({ node }) => {
+//     p.$on('onClosedTag', async ({ node }) => {
 //       if (node.isScript()) {
 //         node.children.forEach(async (child) => {
 //           const w = new WeiboHtml(child)
-//           w.htmlParser()
+//           const infoList = await w.htmlParser()
+//           if (infoList.length > 0) {
+//             naza.write(JSON.stringify(infoList))
+//           }
 //         })
 //       }
 //     })
@@ -135,25 +180,29 @@ class Html {
 //   })
 //   .catch((e) => console.log('weibo error: ', e))
 
-new Html({
-  url: 'https://weibo.com/u/1669879400?is_all=1',
-  output: './assets/weibo-naza.json',
-})
-  .init()
-  .then((p) => {
-    p.$on('onClosedTag', async ({ node }) => {
-      if (node.isScript()) {
-        for (let i = 0, len = node.children.length; i < len; i++) {
-          const child = node.children[i]
-          const w = new WeiboHtml(child)
-          // 没有效果
-          await w.htmlParser()
-        }
-      }
-    })
-    p.exec()
-  })
-  .catch((e) => console.log('weibo error: ', e))
+// const reba = new Html({
+//   url: 'https://weibo.com/u/1669879400?is_all=1',
+//   output: './assets/weibo-reba.json',
+// })
+
+// reba
+//   .init()
+//   .then((p) => {
+//     p.$on('onClosedTag', async ({ node }) => {
+//       if (node.isScript()) {
+//         for (let i = 0, len = node.children.length; i < len; i++) {
+//           const child = node.children[i]
+//           const w = new WeiboHtml(child)
+//           const infoList = await w.htmlParser()
+//           if (infoList.length > 0) {
+//             reba.write(JSON.stringify(infoList))
+//           }
+//         }
+//       }
+//     })
+//     p.exec()
+//   })
+//   .catch((e) => console.log('weibo error: ', e))
 
 class WeiboHtml {
   constructor(node) {
@@ -207,12 +256,6 @@ class WeiboHtml {
       } catch (e) {
         Html.write('./assets/weibo-' + genRandomString() + '.html', json.html)
       }
-    }
-    if (infoList.length > 0) {
-      await Html.write(
-        './assets/weibo-' + genRandomString() + '.json',
-        JSON.stringify(infoList)
-      )
     }
     return infoList
   }
