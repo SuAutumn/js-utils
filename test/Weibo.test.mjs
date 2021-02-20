@@ -2,6 +2,7 @@ import * as https from 'https'
 import * as fs from 'fs'
 
 import HtmlParser from '../dist/mjs/HtmlParser.mjs'
+import formatDate from '../dist/mjs/formatDate.mjs'
 
 function getPromise() {
   let success, fail
@@ -60,6 +61,13 @@ class Html {
     this.url = url
     this.output = output
     this.htmlParser = new HtmlParser()
+    this.writeStream = fs.createWriteStream(this.output, { flags: 'a+' })
+    this.writeStream.on('error', (err) => {
+      console.log(err.stack)
+    })
+    this.writeStream.on('finish', () => {
+      console.log(`${this.output} has been written.`)
+    })
   }
 
   static getHtmlFromUrl(url) {
@@ -98,7 +106,7 @@ class Html {
 
   static write(filename, data) {
     const { p, success, fail } = getPromise()
-    const stream = fs.createWriteStream(filename)
+    const stream = fs.createWriteStream(filename, { flags: 'a+' })
     stream.write(data, 'utf8', (err) => {
       err && fail(err)
     })
@@ -112,8 +120,15 @@ class Html {
    * @param data {string} - 内容
    */
   async write(data) {
-    await Html.write(this.output, data)
-    console.log('write done')
+    this.writeStream.write(data, 'utf8', (err) => {
+      if (err) {
+        console.log(err.stack)
+      }
+    })
+  }
+
+  endWriteStream() {
+    this.writeStream.end()
   }
 
   /**
@@ -157,6 +172,7 @@ class WeiboHtml {
   constructor(node) {
     this.htmlJson = null
     this.getHtml(node)
+    this.isFeedList = false // 是否是微博列表
   }
 
   /**
@@ -175,18 +191,24 @@ class WeiboHtml {
   }
 
   /**
-   * 检查是否含有内容
+   * 初步判断是否是内容js
    */
-  isContent(json) {
-    return json.ns && json.ns === WeiboHtml.SCRIPT_CONTENT
+  isContent() {
+    if (this.htmlJson) {
+      return this.htmlJson.ns === WeiboHtml.SCRIPT_CONTENT
+    }
+    return false
   }
 
   htmlParser() {
     const json = this.htmlJson
     const infoList = []
-    if (json && this.isContent(json) && json.html) {
+    if (json && this.isContent() && json.html) {
       const cp = new HtmlParser(json.html)
       cp.$on('onClosedTag', ({ node }) => {
+        if (node.attrs['node-type'] === 'feed_list') {
+          this.isFeedList = true
+        }
         if (node.attrs.class === 'WB_detail') {
           const info = this.getWeibo(node)
           infoList.push(info)
@@ -280,62 +302,170 @@ class WeiboHtml {
     return info
   }
 }
-async function main() {
-  const targetList = [
-    {
-      url: 'https://weibo.com/u/1350995007?is_all=1',
-      output: './assets/weibo-naza.json',
-    },
-    {
-      url: 'https://weibo.com/u/1669879400?is_all=1',
-      output: './assets/weibo-reba.json',
-    },
-    {
-      url: 'https://weibo.com/yangmiblog?is_all=1',
-      output: './assets/weibo-yangmi.json',
-    },
-    {
-      url: 'https://weibo.com/u/1809054937',
-      output: './assets/weibo-liqing.json',
-    },
-  ]
-
+const targetList = [
+  {
+    url: 'https://weibo.com/u/1350995007?is_all=1',
+    output: './assets/weibo-naza.txt',
+    name: '古力娜扎',
+    list: [],
+    html: null,
+  },
+  {
+    url: 'https://weibo.com/u/1669879400?is_all=1',
+    output: './assets/weibo-reba.txt',
+    name: '迪丽热巴',
+    list: [],
+    html: null,
+  },
+  {
+    url: 'https://weibo.com/yangmiblog?is_all=1',
+    output: './assets/weibo-yangmi.txt',
+    name: '杨幂',
+    list: [],
+    html: null,
+  },
+  {
+    url: 'https://weibo.com/u/1809054937',
+    output: './assets/weibo-liqin.txt',
+    name: '李沁',
+    list: [],
+    html: null,
+  },
+  {
+    url: 'https://weibo.com/u/1624923463?is_all=1',
+    output: './assets/weibo-huachenyu.txt',
+    name: '华晨宇',
+    list: [],
+    html: null,
+  },
+  {
+    url: 'https://weibo.com/u/1677856077?is_all=1',
+    output: './assets/weibo-zhangbichen.txt',
+    name: '张碧晨',
+    list: [],
+    html: null,
+  },
+]
+function listener() {
+  console.log('时间: ', formatDate(new Date(), 'MM-dd HH:mm:ss'))
   for (let i = 0; i < targetList.length; i++) {
-    const h = new Html(targetList[i])
-    // try {
-    //   console.time(i)
-    //   const p = await h.init()
-    //   p.$on('onClosedTag', ({ node }) => {
-    //     if (node.isScript()) {
-    //       node.children.forEach((child) => {
-    //         const w = new WeiboHtml(child)
-    //         const infoList = w.htmlParser()
-    //         if (infoList.length > 0) {
-    //           h.write(JSON.stringify(infoList))
-    //         }
-    //       })
-    //     }
-    //   })
-    //   p.exec()
-    //   console.timeEnd(i)
-    // } catch (e) {
-    //   console.log('weibo error: ', e)
-    // }
-    h.init().then((p) => {
-      p.$on('onClosedTag', ({ node }) => {
-        if (node.isScript()) {
-          node.children.forEach((child) => {
-            const w = new WeiboHtml(child)
-            const infoList = w.htmlParser()
-            if (infoList.length > 0) {
-              h.write(JSON.stringify(infoList))
-            }
-          })
-        }
+    const rawTarget = targetList[i]
+    const h = rawTarget.html || new Html(rawTarget)
+    rawTarget.html = h
+    h.init()
+      .then((p) => {
+        p.$on('onClosedTag', ({ node }) => {
+          if (node.isScript()) {
+            node.children.forEach((child) => {
+              const w = new WeiboHtml(child)
+              if (w.isContent()) {
+                const infoList = w.htmlParser()
+                if (w.isFeedList) {
+                  // console.log(
+                  //   rawTarget.name,
+                  //   ' ',
+                  //   diff(infoList, rawTarget.list, (info) => {
+                  //     if (info) {
+                  //       return info.timestamp
+                  //     }
+                  //   })
+                  // )
+                  const diffResult = diff(infoList, rawTarget.list, (info) => {
+                    if (info) {
+                      return info.timestamp
+                    }
+                  })
+                  if (diffResult.add.length > 0) {
+                    h.write(
+                      '[add]--' +
+                        formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss') +
+                        '\n'
+                    )
+                    diffResult.add.forEach((r) => {
+                      h.write(JSON.stringify(r) + '\n')
+                    })
+                    h.write('\n')
+                  }
+                  if (diffResult.del.length > 0) {
+                    h.write(
+                      '[delete]--' +
+                        formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss') +
+                        '\n'
+                    )
+                    diffResult.del.forEach((r) => {
+                      h.write(JSON.stringify(r) + '\n')
+                    })
+                    h.write('\n')
+                  }
+                  rawTarget.list = infoList
+                }
+                // h.write(JSON.stringify(infoList))
+              }
+            })
+          }
+        })
+        p.exec()
       })
-      p.exec()
-    })
+      .finally(() => {})
   }
 }
 
+function main() {
+  listener()
+  setInterval(listener, 1000 * 5)
+}
+
 main()
+process.on('beforeExit', () => {
+  targetList.forEach((item) => {
+    if (item.html) {
+      item.html.endWriteStream()
+    }
+  })
+})
+/**
+ * 获取元素差
+ * @param ele1 {Array<any>}
+ * @param ele2 {Array<any>}
+ * @param valCb {(v) => any} - 设置比较的值
+ */
+function diff(ele1, ele2, valCb = (v) => v) {
+  const result = {
+    add: [],
+    del: [],
+  }
+  let start = 0
+  const len = ele1.length
+  while (start < len) {
+    if (valCb(ele1[start]) === valCb(ele2[0])) {
+      break
+    }
+    start++
+  }
+  if (start === len) {
+    result.add = ele1
+    if (start === 0) {
+      result.del = ele2
+    }
+  } else if (start > 0) {
+    result.add = ele1.slice(0, start)
+    let j = 0
+    const len2 = ele2.length
+    for (let i = start; i < len; i++) {
+      // ele2 溢出处理
+      if (j >= len2) {
+        break
+      }
+      if (valCb(ele1[i]) !== valCb(ele2[j])) {
+        do {
+          result.del.push(ele2[j])
+          j++
+        } while (j < len2 && valCb(ele1[i]) !== valCb(ele2[j]))
+      }
+      j++
+    }
+  }
+  return result
+}
+
+// console.log(diff([1], []))
