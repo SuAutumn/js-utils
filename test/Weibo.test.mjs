@@ -3,6 +3,7 @@ import * as fs from 'fs'
 
 import HtmlParser from '../dist/mjs/HtmlParser.mjs'
 import formatDate from '../dist/mjs/formatDate.mjs'
+import simpleDiff from '../dist/mjs/simpleDiff.mjs'
 
 function getPromise() {
   let success, fail
@@ -144,28 +145,6 @@ class Html {
     return this.htmlParser
   }
 }
-
-// const v2ex = new Html({
-//   url: 'https://www.v2ex.com/',
-//   output: './assets/v2ex.json',
-// })
-// v2ex
-//   .init()
-//   .then(async (p) => {
-//     let i = 1
-//     p.$on('onClosedTag', ({ node }) => {
-//       if (node.attrs.class === 'avatar') {
-//         // console.log(node.attrs.src)
-//       }
-//       if (node.attrs.class === 'topic-link') {
-//         console.log(i++, '', node.children[0].getName())
-//         console.log()
-//       }
-//     })
-//     await v2ex.write()
-//     console.log('完成')
-//   })
-//   .catch((e) => console.log('v2ex error: ', e))
 
 class WeiboHtml {
   static SCRIPT_CONTENT = 'pl.content.homeFeed.index'
@@ -361,33 +340,22 @@ function listener() {
               if (w.isContent()) {
                 const infoList = w.htmlParser()
                 if (w.isFeedList) {
-                  const diffResult = diff(infoList, rawTarget.list, (info) => {
-                    if (info) {
-                      return info.timestamp
+                  const diffResult = simpleDiff(
+                    infoList,
+                    rawTarget.list,
+                    (info) => {
+                      if (info) {
+                        return info.timestamp
+                      }
                     }
+                  )
+                  diffResult.length > 0 &&
+                    h.write(
+                      formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss') + '\n'
+                    )
+                  diffResult.forEach((item) => {
+                    h.write(JSON.stringify(item) + '\n')
                   })
-                  if (diffResult.add.length > 0) {
-                    h.write(
-                      '[add]--' +
-                        formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss') +
-                        '\n'
-                    )
-                    diffResult.add.forEach((r) => {
-                      h.write(JSON.stringify(r) + '\n')
-                    })
-                    h.write('\n')
-                  }
-                  if (diffResult.del.length > 0) {
-                    h.write(
-                      '[delete]--' +
-                        formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss') +
-                        '\n'
-                    )
-                    diffResult.del.forEach((r) => {
-                      h.write(JSON.stringify(r) + '\n')
-                    })
-                    h.write('\n')
-                  }
                   rawTarget.list = infoList
                 }
                 // h.write(JSON.stringify(infoList))
@@ -421,49 +389,3 @@ process.on('beforeExit', () => {
     }
   })
 })
-/**
- * 获取元素差
- * @param ele1 {Array<any>}
- * @param ele2 {Array<any>}
- * @param valCb {(v) => any} - 设置比较的值
- */
-function diff(ele1, ele2, valCb = (v) => v) {
-  const result = {
-    add: [],
-    del: [],
-  }
-  let start = 0
-  const len = ele1.length
-  while (start < len) {
-    if (valCb(ele1[start]) === valCb(ele2[0])) {
-      break
-    }
-    start++
-  }
-  if (start === len) {
-    result.add = ele1
-    if (start === 0) {
-      result.del = ele2
-    }
-  } else if (start > 0) {
-    result.add = ele1.slice(0, start)
-    let j = 0
-    const len2 = ele2.length
-    for (let i = start; i < len; i++) {
-      // ele2 溢出处理
-      if (j >= len2) {
-        break
-      }
-      if (valCb(ele1[i]) !== valCb(ele2[j])) {
-        do {
-          result.del.push(ele2[j])
-          j++
-        } while (j < len2 && valCb(ele1[i]) !== valCb(ele2[j]))
-      }
-      j++
-    }
-  }
-  return result
-}
-
-// console.log(diff([1], []))
