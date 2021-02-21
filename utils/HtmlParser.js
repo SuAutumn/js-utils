@@ -381,6 +381,15 @@ export default class HtmlParser {
       }
       this.offset++
     }
+    // 处理余留
+    if (this.parentNodeStack.length > 0) {
+      for (let i = this.parentNodeStack.length; i > 0; i--) {
+        const node = this.parentNodeStack[i - 1]
+        this.popNodeFromParent()
+        node.setEnd(this.length - 1, this.html)
+        this.$emit('onClosedTag', { node })
+      }
+    }
     return this.tree.slice(0)
     // console.log(JSON.stringify(this.tree))
   }
