@@ -498,11 +498,21 @@ export default class HtmlParser {
   fixOrderErrInParentStack(tagName) {
     let len = this.parentNodeStack.length
     while (len > 0) {
-      if (this.lastElement(this.parentNodeStack).getName() === tagName) {
+      if (this.parentNodeStack[len - 1].getName() === tagName) {
         break
       }
-      this.parentNodeStack.pop()
       len--
+    }
+    if (len === 0) {
+      // 多余尾部标签 <div>xxxx</p></div>
+      const node = new HtmlNode(this._start, this.html)
+      node.setName(tagName)
+      node.setTypeEle()
+      // 添加层级关系
+      this.addNodeToParent(node)
+    }
+    if (len > 0) {
+      this.parentNodeStack = this.parentNodeStack.slice(0, len)
     }
   }
 }

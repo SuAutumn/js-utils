@@ -361,15 +361,6 @@ function listener() {
               if (w.isContent()) {
                 const infoList = w.htmlParser()
                 if (w.isFeedList) {
-                  // console.log(
-                  //   rawTarget.name,
-                  //   ' ',
-                  //   diff(infoList, rawTarget.list, (info) => {
-                  //     if (info) {
-                  //       return info.timestamp
-                  //     }
-                  //   })
-                  // )
                   const diffResult = diff(infoList, rawTarget.list, (info) => {
                     if (info) {
                       return info.timestamp
@@ -405,6 +396,13 @@ function listener() {
           }
         })
         p.exec()
+      })
+      .catch((e) => {
+        console.log(e.stack)
+        Html.write(
+          './assets/weibo-' + genRandomString() + '.html',
+          h.htmlParser.html
+        )
       })
       .finally(() => {})
   }
