@@ -13,7 +13,7 @@ export default function (newArr = [], oldArr = [], getValCb = (val) => val) {
   }
   const r = []
   let i = 0
-  let index = -1
+  let index = -1 // 新元素在老元素中位置
   for (; i < newArr.length; i++) {
     index = indexOf(oldArr, newArr[i], getValCb)
     if (index > -1) {
@@ -24,6 +24,9 @@ export default function (newArr = [], oldArr = [], getValCb = (val) => val) {
     }
     r.push({ data: newArr[i], type: 'add' })
   }
+  /**
+   * 查找元素被删除的情况
+   */
   if (index > -1) {
     for (; i < newArr.length; i++) {
       if (index >= oldArr.length) {
@@ -35,11 +38,12 @@ export default function (newArr = [], oldArr = [], getValCb = (val) => val) {
       }
       index++
     }
-    // if (index < oldArr.length ) {
-    //   oldArr.slice(index).forEach((item) => {
-    //     r.push({ data: item, type: 'delete' })
-    //   })
-    // }
+    // 当长度小于老数据长度，添加老数据被删除的情况，大于情况忽略
+    if (index < oldArr.length && newArr.length < oldArr.length) {
+      oldArr.slice(index).forEach((item) => {
+        r.push({ data: item, type: 'delete' })
+      })
+    }
   }
 
   return r
