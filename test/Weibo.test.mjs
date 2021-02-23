@@ -133,7 +133,7 @@ class Html {
 
 class WeiboHtml {
   static SCRIPT_CONTENT = 'pl.content.homeFeed.index'
-  static SCRIPT_DOM_ID = 'Pl_Official_MyProfileFeed__21'
+  static SCRIPT_DOM_ID = 'Pl_Official_MyProfileFeed'
   constructor(node) {
     this.htmlJson = null
     this.getHtml(node)
@@ -162,7 +162,7 @@ class WeiboHtml {
     if (this.htmlJson && this.htmlJson.ns) {
       return (
         this.htmlJson.ns === WeiboHtml.SCRIPT_CONTENT &&
-        this.htmlJson.domid === WeiboHtml.SCRIPT_DOM_ID
+        this.htmlJson.domid.indexOf(WeiboHtml.SCRIPT_DOM_ID) === 0
       )
     }
     return false
@@ -274,42 +274,54 @@ const targetList = [
     output: './assets/weibo-naza.txt',
     name: '古力娜扎',
     list: [],
-    html: null,
   },
   {
     url: 'https://weibo.com/u/1669879400?is_all=1',
     output: './assets/weibo-reba.txt',
     name: '迪丽热巴',
     list: [],
-    html: null,
   },
   {
     url: 'https://weibo.com/yangmiblog?is_all=1',
     output: './assets/weibo-yangmi.txt',
     name: '杨幂',
     list: [],
-    html: null,
   },
   {
     url: 'https://weibo.com/u/1809054937',
     output: './assets/weibo-liqin.txt',
     name: '李沁',
     list: [],
-    html: null,
   },
   {
     url: 'https://weibo.com/u/1624923463?is_all=1',
     output: './assets/weibo-huachenyu.txt',
     name: '华晨宇',
     list: [],
-    html: null,
   },
   {
     url: 'https://weibo.com/u/1677856077?is_all=1',
     output: './assets/weibo-zhangbichen.txt',
     name: '张碧晨',
     list: [],
-    html: null,
+  },
+  {
+    url: 'https://weibo.com/u/1300419694?is_all=1',
+    output: './assets/weibo-songyi.txt',
+    name: '宋轶',
+    list: [],
+  },
+  {
+    url: 'https://weibo.com/xiaozhan1?is_all=1',
+    output: './assets/weibo-xiaozhan.txt',
+    name: '肖战',
+    list: [],
+  },
+  {
+    url: 'https://weibo.com/dengchao?is_all=1',
+    output: './assets/weibo-dengchao.txt',
+    name: '邓超',
+    list: [],
   },
 ]
 function listener() {
@@ -324,17 +336,16 @@ function listener() {
           if (node.isScript()) {
             node.children.forEach((child) => {
               const w = new WeiboHtml(child)
+              // if (rawTarget.name === '李沁') {
+              //   console.log(rawTarget.name, w.isContent())
+              //   Html.write(
+              //     `./assets/weibo-${rawTarget.name}-${genRandomString()}.html`,
+              //     child.getName()
+              //   )
+              // }
               if (w.isContent()) {
                 const infoList = w.htmlParser()
                 if (!w.isNoWbDetail) {
-                  if (infoList.length === 0) {
-                    Html.write(
-                      `./assets/weibo-${
-                        rawTarget.name
-                      }-${genRandomString()}.html`,
-                      child.getName()
-                    )
-                  }
                   const diffResult = simpleDiff(
                     infoList,
                     rawTarget.list,
@@ -376,13 +387,7 @@ function listener() {
 // let count = 0
 function main() {
   listener()
-  const timer = setInterval(() => {
-    listener()
-    // if (count > 3) {
-    //   clearInterval(timer)
-    // }
-    // count++
-  }, 1000 * 5)
+  setTimeout(main, 1000 * 5)
 }
 
 main()
