@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # dirname $0，取得当前执行的脚本文件的父目录
-currentpath=$(cd `dirname $0`; pwd)
+currentPath=$(cd `dirname $0`; pwd)
 
 # 当前执行环境目录
-cd $currentpath
+cd $currentPath
 cd ..
-echo "脚本执行目录: $(pwd)"
+base=$(pwd)
+echo 脚本执行目录: $base
 # mkdir dist
 rm -rf dist
 mkdir dist
 mkdir dist/mjs
-
 
 for filename in $(ls ./utils)
 do
@@ -25,4 +25,12 @@ do
   fi
   # echo "name: $filename ${#filename}"
   # cp utils/$filename dist/mjs/$filename.mjs
+done
+
+for log in $(ls ./assets)
+do
+  if [ -f $base/assets/$log ] && [ $(echo $log | awk -F '.' '{ print $2 }') == 'txt' ]; then
+    rm ./assets/$log
+    echo 删除 $log
+  fi
 done
