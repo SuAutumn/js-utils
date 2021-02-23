@@ -62,13 +62,6 @@ class Html {
     this.url = url
     this.output = output
     this.htmlParser = new HtmlParser()
-    this.writeStream = fs.createWriteStream(this.output, { flags: 'a+' })
-    this.writeStream.on('error', (err) => {
-      console.log(err.stack)
-    })
-    this.writeStream.on('finish', () => {
-      console.log(`${this.output} has been written.`)
-    })
   }
 
   static getHtmlFromUrl(url) {
@@ -120,16 +113,8 @@ class Html {
    * 写入文件
    * @param data {string} - 内容
    */
-  write(data) {
-    this.writeStream.write(data, 'utf8', (err) => {
-      if (err) {
-        console.log(err.stack)
-      }
-    })
-  }
-
-  endWriteStream() {
-    this.writeStream.end()
+  async write(data) {
+    await Html.write(this.output, data)
   }
 
   /**
@@ -152,6 +137,7 @@ class WeiboHtml {
   constructor(node) {
     this.htmlJson = null
     this.getHtml(node)
+    this.isNoWbDetail = true // 没有微博内容
   }
 
   /**
@@ -189,6 +175,7 @@ class WeiboHtml {
       const cp = new HtmlParser(json.html)
       cp.$on('onClosedTag', ({ node }) => {
         if (node.attrs.class === 'WB_detail') {
+          this.isNoWbDetail = false
           const info = this.getWeibo(node)
           infoList.push(info)
         }
@@ -339,36 +326,38 @@ function listener() {
               const w = new WeiboHtml(child)
               if (w.isContent()) {
                 const infoList = w.htmlParser()
-                if (infoList.length === 0) {
-                  Html.write(
-                    `./assets/weibo-${
-                      rawTarget.name
-                    }-${genRandomString()}.html`,
-                    child.getName()
-                  )
-                }
-                const diffResult = simpleDiff(
-                  infoList,
-                  rawTarget.list,
-                  (info) => {
-                    if (info) {
-                      return info.timestamp
-                    }
+                if (!w.isNoWbDetail) {
+                  if (infoList.length === 0) {
+                    Html.write(
+                      `./assets/weibo-${
+                        rawTarget.name
+                      }-${genRandomString()}.html`,
+                      child.getName()
+                    )
                   }
-                )
-                diffResult.length > 0 &&
-                  h.write(
-                    `record time:${formatDate(
+                  const diffResult = simpleDiff(
+                    infoList,
+                    rawTarget.list,
+                    (info) => {
+                      if (info) {
+                        return info.timestamp
+                      }
+                    }
+                  )
+                  if (diffResult.length > 0) {
+                    const title = `record time:${formatDate(
                       Date.now(),
                       'yyyy-MM-dd HH:mm:ss.S'
                     )} new ${infoList.length} old ${rawTarget.list.length}\n`
-                  )
-                diffResult.forEach((item) => {
-                  h.write(
-                    `----${item.type}----\n${item.data.nickname} ${item.data.date}\n${item.data.content}\n\n`
-                  )
-                })
-                rawTarget.list = infoList
+                    const content = diffResult
+                      .map((item) => {
+                        return `----${item.type}----\n${item.data.nickname} ${item.data.date}\n${item.data.content}\n\n`
+                      })
+                      .join('')
+                    h.write(title + content)
+                  }
+                  rawTarget.list = infoList
+                }
               }
             })
           }
@@ -397,13 +386,6 @@ function main() {
 }
 
 main()
-process.on('beforeExit', () => {
-  targetList.forEach((item) => {
-    if (item.html) {
-      item.html.endWriteStream()
-    }
-  })
-})
 
 function calc(data) {
   return Math.round((data / 1024 / 1024) * 100) / 100 + ' MB'
