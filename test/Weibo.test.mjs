@@ -78,8 +78,8 @@ class Html {
       {
         headers: {
           cookie: [
-            'SUB=_2AkMXQYC5f8NxqwJRmf4dzGPkbo12ygjEieKhHXFiJRMxHRl-yj9kqk0ptRB6PMGuVq7H-O4K7ITLAPE_ds8W7ki7H1Am',
-            'SUBP=0033WrSXqPxfM72-Ws9jqgMF55529P9D9WWgb9FC7MexJpJ4IsmGevLD',
+            'SUB=_2A25NNyDoDeRhGeNJ61QW-SvNwzqIHXVuRRUgrDV8PUNbmtAfLXf_kW9NSBXBn1Yh9I4ChnnjfQMok6Du54vfVjhR',
+            'SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WF0fmhMbsPYJ77qT22HzsTo5NHD95QfS05cS0.feKncWs4Dqcj1-NHWUPxfdgREeh2feh.t',
           ].join(';'),
         },
       },
@@ -120,7 +120,7 @@ class Html {
    * 写入文件
    * @param data {string} - 内容
    */
-  async write(data) {
+  write(data) {
     this.writeStream.write(data, 'utf8', (err) => {
       if (err) {
         console.log(err.stack)
@@ -148,10 +148,10 @@ class Html {
 
 class WeiboHtml {
   static SCRIPT_CONTENT = 'pl.content.homeFeed.index'
+  static SCRIPT_DOM_ID = 'Pl_Official_MyProfileFeed__21'
   constructor(node) {
     this.htmlJson = null
     this.getHtml(node)
-    this.isFeedList = false // 是否是微博列表
   }
 
   /**
@@ -170,11 +170,14 @@ class WeiboHtml {
   }
 
   /**
-   * 初步判断是否是内容js
+   * 判断是否是内容js
    */
   isContent() {
-    if (this.htmlJson) {
-      return this.htmlJson.ns === WeiboHtml.SCRIPT_CONTENT
+    if (this.htmlJson && this.htmlJson.ns) {
+      return (
+        this.htmlJson.ns === WeiboHtml.SCRIPT_CONTENT &&
+        this.htmlJson.domid === WeiboHtml.SCRIPT_DOM_ID
+      )
     }
     return false
   }
@@ -182,12 +185,9 @@ class WeiboHtml {
   htmlParser() {
     const json = this.htmlJson
     const infoList = []
-    if (json && this.isContent() && json.html) {
+    if (json && json.html) {
       const cp = new HtmlParser(json.html)
       cp.$on('onClosedTag', ({ node }) => {
-        if (node.attrs['node-type'] === 'feed_list') {
-          this.isFeedList = true
-        }
         if (node.attrs.class === 'WB_detail') {
           const info = this.getWeibo(node)
           infoList.push(info)
@@ -326,11 +326,11 @@ const targetList = [
   },
 ]
 function listener() {
-  console.log('时间: ', formatDate(new Date(), 'MM-dd HH:mm:ss'))
+  // console.log('时间: ', formatDate(new Date(), 'MM-dd HH:mm:ss'))
+  logger()
   for (let i = 0; i < targetList.length; i++) {
     const rawTarget = targetList[i]
-    const h = rawTarget.html || new Html(rawTarget)
-    rawTarget.html = h
+    const h = new Html(rawTarget)
     h.init()
       .then((p) => {
         p.$on('onClosedTag', ({ node }) => {
@@ -339,26 +339,36 @@ function listener() {
               const w = new WeiboHtml(child)
               if (w.isContent()) {
                 const infoList = w.htmlParser()
-                if (w.isFeedList) {
-                  const diffResult = simpleDiff(
-                    infoList,
-                    rawTarget.list,
-                    (info) => {
-                      if (info) {
-                        return info.timestamp
-                      }
-                    }
+                if (infoList.length === 0) {
+                  Html.write(
+                    `./assets/weibo-${
+                      rawTarget.name
+                    }-${genRandomString()}.html`,
+                    child.getName()
                   )
-                  diffResult.length > 0 &&
-                    h.write(
-                      formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss') + '\n'
-                    )
-                  diffResult.forEach((item) => {
-                    h.write(JSON.stringify(item) + '\n')
-                  })
-                  rawTarget.list = infoList
                 }
-                // h.write(JSON.stringify(infoList))
+                const diffResult = simpleDiff(
+                  infoList,
+                  rawTarget.list,
+                  (info) => {
+                    if (info) {
+                      return info.timestamp
+                    }
+                  }
+                )
+                diffResult.length > 0 &&
+                  h.write(
+                    `record time:${formatDate(
+                      Date.now(),
+                      'yyyy-MM-dd HH:mm:ss.S'
+                    )} new ${infoList.length} old ${rawTarget.list.length}\n`
+                  )
+                diffResult.forEach((item) => {
+                  h.write(
+                    `----${item.type}----\n${item.data.nickname} ${item.data.date}\n${item.data.content}\n\n`
+                  )
+                })
+                rawTarget.list = infoList
               }
             })
           }
@@ -372,13 +382,18 @@ function listener() {
           h.htmlParser.html
         )
       })
-      .finally(() => {})
   }
 }
-
+// let count = 0
 function main() {
   listener()
-  setInterval(listener, 1000 * 5)
+  const timer = setInterval(() => {
+    listener()
+    // if (count > 3) {
+    //   clearInterval(timer)
+    // }
+    // count++
+  }, 1000 * 5)
 }
 
 main()
@@ -389,3 +404,15 @@ process.on('beforeExit', () => {
     }
   })
 })
+
+function calc(data) {
+  return Math.round((data / 1024 / 1024) * 100) / 100 + ' MB'
+}
+function logger() {
+  const mem = process.memoryUsage()
+  console.log(
+    formatDate(new Date(), 'HH:mm:ss.S'),
+    'memory now:',
+    calc(mem.rss)
+  )
+}
