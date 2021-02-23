@@ -1,5 +1,6 @@
 import * as https from 'https'
 import * as fs from 'fs'
+import * as os from 'os'
 
 import HtmlParser from '../dist/mjs/HtmlParser.mjs'
 import formatDate from '../dist/mjs/formatDate.mjs'
@@ -328,18 +329,24 @@ function listener() {
   // console.log('时间: ', formatDate(new Date(), 'MM-dd HH:mm:ss'))
   logger()
   for (let i = 0; i < targetList.length; i++) {
-    const rawTarget = targetList[i]
-    const h = new Html(rawTarget)
+    const target = targetList[i]
+    const h = new Html(target)
+    const now = Date.now()
+    let netTime = 0
+    let handleTime = 0
+    let html = ''
     h.init()
       .then((p) => {
+        netTime = Date.now()
+        html = p.html
         p.$on('onClosedTag', ({ node }) => {
           if (node.isScript()) {
             node.children.forEach((child) => {
               const w = new WeiboHtml(child)
-              // if (rawTarget.name === '李沁') {
-              //   console.log(rawTarget.name, w.isContent())
+              // if (target.name === '李沁') {
+              //   console.log(target.name, w.isContent())
               //   Html.write(
-              //     `./assets/weibo-${rawTarget.name}-${genRandomString()}.html`,
+              //     `./assets/weibo-${target.name}-${genRandomString()}.html`,
               //     child.getName()
               //   )
               // }
@@ -348,7 +355,7 @@ function listener() {
                 if (!w.isNoWbDetail) {
                   const diffResult = simpleDiff(
                     infoList,
-                    rawTarget.list,
+                    target.list,
                     (info) => {
                       if (info) {
                         return info.timestamp
@@ -359,7 +366,7 @@ function listener() {
                     const title = `record time:${formatDate(
                       Date.now(),
                       'yyyy-MM-dd HH:mm:ss.S'
-                    )} new ${infoList.length} old ${rawTarget.list.length}\n`
+                    )} new ${infoList.length} old ${target.list.length}\n`
                     const content = diffResult
                       .map((item) => {
                         return `----${item.type}----\n${item.data.nickname} ${item.data.date}\n${item.data.content}\n\n`
@@ -367,13 +374,14 @@ function listener() {
                       .join('')
                     h.write(title + content)
                   }
-                  rawTarget.list = infoList
+                  target.list = infoList
                 }
               }
             })
           }
         })
         p.exec()
+        handleTime = Date.now()
       })
       .catch((e) => {
         console.log(e.stack)
@@ -381,6 +389,20 @@ function listener() {
           './assets/weibo-' + genRandomString() + '.html',
           h.htmlParser.html
         )
+      })
+      .finally(() => {
+        if (netTime - now > 1000 * 8) {
+          const content = `[time]${target.name}: total ${
+            (Date.now() - now) / 1000
+          }s, net time ${(netTime - now) / 1000}s, handle time ${
+            (handleTime - netTime) / 1000
+          }s.${os.EOL}`
+          Html.write('./assets/log.txt', content)
+          // Html.write(
+          //   `./assets/log-${target.name}-${genRandomString()}.txt`,
+          //   content + html
+          // )
+        }
       })
   }
 }
