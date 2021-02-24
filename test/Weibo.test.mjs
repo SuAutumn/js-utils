@@ -122,12 +122,8 @@ class Html {
    * @returns {Promise<HtmlParser>}
    */
   async init() {
-    try {
-      const chunk = await Html.getHtmlFromUrl(this.url)
-      this.htmlParser.setHtml(chunk)
-    } catch (e) {
-      console.log(e)
-    }
+    const chunk = await Html.getHtmlFromUrl(this.url)
+    this.htmlParser.setHtml(chunk)
     return this.htmlParser
   }
 }
@@ -274,55 +270,55 @@ const targetList = [
     url: 'https://weibo.com/u/1350995007?is_all=1',
     output: './assets/weibo-naza.txt',
     name: '古力娜扎',
-    list: [],
+    list: null,
   },
   {
     url: 'https://weibo.com/u/1669879400?is_all=1',
     output: './assets/weibo-reba.txt',
     name: '迪丽热巴',
-    list: [],
+    list: null,
   },
   {
     url: 'https://weibo.com/yangmiblog?is_all=1',
     output: './assets/weibo-yangmi.txt',
     name: '杨幂',
-    list: [],
+    list: null,
   },
   {
     url: 'https://weibo.com/u/1809054937',
     output: './assets/weibo-liqin.txt',
     name: '李沁',
-    list: [],
+    list: null,
   },
   {
     url: 'https://weibo.com/u/1624923463?is_all=1',
     output: './assets/weibo-huachenyu.txt',
     name: '华晨宇',
-    list: [],
+    list: null,
   },
   {
     url: 'https://weibo.com/u/1677856077?is_all=1',
     output: './assets/weibo-zhangbichen.txt',
     name: '张碧晨',
-    list: [],
+    list: null,
   },
   {
     url: 'https://weibo.com/u/1300419694?is_all=1',
     output: './assets/weibo-songyi.txt',
     name: '宋轶',
-    list: [],
+    list: null,
   },
   {
     url: 'https://weibo.com/xiaozhan1?is_all=1',
     output: './assets/weibo-xiaozhan.txt',
     name: '肖战',
-    list: [],
+    list: null,
   },
   {
     url: 'https://weibo.com/dengchao?is_all=1',
     output: './assets/weibo-dengchao.txt',
     name: '邓超',
-    list: [],
+    list: null,
   },
 ]
 function listener() {
@@ -343,36 +339,39 @@ function listener() {
           if (node.isScript()) {
             node.children.forEach((child) => {
               const w = new WeiboHtml(child)
-              // if (target.name === '李沁') {
-              //   console.log(target.name, w.isContent())
-              //   Html.write(
-              //     `./assets/weibo-${target.name}-${genRandomString()}.html`,
-              //     child.getName()
-              //   )
-              // }
               if (w.isContent()) {
                 const infoList = w.htmlParser()
                 if (!w.isNoWbDetail) {
-                  const diffResult = simpleDiff(
-                    infoList,
-                    target.list,
-                    (info) => {
-                      if (info) {
-                        return info.timestamp
+                  if (target.list instanceof Array) {
+                    const diffResult = simpleDiff(
+                      infoList,
+                      target.list,
+                      (info) => {
+                        if (info) {
+                          return info.timestamp
+                        }
                       }
+                    )
+                    if (diffResult.length > 0) {
+                      const title = `record time:${formatDate(
+                        Date.now(),
+                        'yyyy-MM-dd HH:mm:ss.S'
+                      )} new ${infoList.length} old ${target.list.length}${
+                        os.EOL
+                      }`
+                      const content = diffResult
+                        .map((item) => {
+                          return `----${item.type}----${os.EOL}${
+                            item.data.nickname
+                          } ${formatDate(
+                            Number(item.data.timestamp),
+                            'yyyy-MM-dd HH:mm:ss.S'
+                          )}${os.EOL}${item.data.content}${os.EOL}${os.EOL}`
+                        })
+                        .join('')
+                      Html.write('./assets/diff.txt', title + content)
+                      // h.write(title + content)
                     }
-                  )
-                  if (diffResult.length > 0) {
-                    const title = `record time:${formatDate(
-                      Date.now(),
-                      'yyyy-MM-dd HH:mm:ss.S'
-                    )} new ${infoList.length} old ${target.list.length}\n`
-                    const content = diffResult
-                      .map((item) => {
-                        return `----${item.type}----\n${item.data.nickname} ${item.data.date}\n${item.data.content}\n\n`
-                      })
-                      .join('')
-                    h.write(title + content)
                   }
                   target.list = infoList
                 }
@@ -384,10 +383,11 @@ function listener() {
         handleTime = Date.now()
       })
       .catch((e) => {
-        console.log(e.stack)
         Html.write(
-          './assets/weibo-' + genRandomString() + '.html',
-          h.htmlParser.html
+          './assets/weibo-error.txt',
+          `时间${formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss.S')}${os.EOL}${
+            e.message
+          }${os.EOL}${e.stack}${os.EOL}${os.EOL}`
         )
       })
       .finally(() => {
