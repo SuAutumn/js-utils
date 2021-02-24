@@ -8,6 +8,7 @@
     "tsc": "tsc",
     "watch": "tsc --watch",
     "hp-test": "node --experimental-modules ./test/Weibo.test.mjs",
+    "remote-log": "node --experimental-modules ./utils/remoteLog.mjs",
     "build": "./build/build.sh"
   },
   "keywords": [],
