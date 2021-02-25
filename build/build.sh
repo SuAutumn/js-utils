@@ -26,11 +26,3 @@ do
   # echo "name: $filename ${#filename}"
   # cp utils/$filename dist/mjs/$filename.mjs
 done
-
-for log in $(ls ./assets)
-do
-  if [ -f $base/assets/$log ] && [ $(echo $log | awk -F '.' '{ print $2 }') == 'txt' ]; then
-    rm ./assets/$log
-    echo 删除 $log
-  fi
-done
