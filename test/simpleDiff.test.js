@@ -34,16 +34,21 @@ test('simpleDiff: mock', () => {
 
   expect(simpleDiff([3, 2], [3, 2, 1])).toEqual([{ data: 1, type: 'delete' }])
 
-  expect(simpleDiff([4, 3, 2], [3, 2, 1])).toEqual([{ data: 4, type: 'add' }])
+  expect(simpleDiff([4, 3, 2], [3, 2, 1])).toEqual([
+    { data: 4, type: 'add' },
+    { data: 1, type: 'delete' },
+  ])
 
   expect(simpleDiff([5, 4, 3, 2], [3, 2, 1])).toEqual([
     { data: 5, type: 'add' },
     { data: 4, type: 'add' },
+    { data: 1, type: 'delete' },
   ])
 
   expect(simpleDiff([3, 2, 1], [5, 4, 3, 2])).toEqual([
     { data: 5, type: 'delete' },
     { data: 4, type: 'delete' },
+    { data: 1, type: 'add' },
   ])
 
   expect(simpleDiff([3, 2], [5, 4, 3, 2, 1])).toEqual([
@@ -58,5 +63,6 @@ test('simpleDiff: mock', () => {
     { data: 6, type: 'add' },
     { data: 5, type: 'delete' },
     { data: 4, type: 'delete' },
+    { data: 1, type: 'delete' },
   ])
 })
