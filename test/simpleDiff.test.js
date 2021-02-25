@@ -20,6 +20,7 @@ test('simpleDiff: oldArr is empty', () => {
 
 test('simpleDiff: mock', () => {
   expect(simpleDiff([], [])).toEqual([])
+  expect(simpleDiff()).toEqual([])
 
   expect(simpleDiff([1], [])).toEqual([{ data: 1, type: 'add' }])
   expect(simpleDiff([], [1])).toEqual([{ data: 1, type: 'delete' }])

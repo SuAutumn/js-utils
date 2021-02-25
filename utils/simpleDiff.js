@@ -36,7 +36,7 @@ export default function simpleDiff(
   return r
 }
 
-function indexOf(arr, item, getValCb = (val) => val) {
+function indexOf(arr, item, getValCb) {
   const len = arr.length
   let index = -1
   for (let i = 0; i < len; i++) {
