@@ -9,9 +9,11 @@ const serve = http.createServer(async (req, res) => {
   try {
     const bodyStr = await getReqBody(req)
     if (bodyStr.length > 0) {
-      const content = `${formatDateNow()}${os.EOL}${req.url}${
+      const content = `${formatDateNow()}${os.EOL}${
+        req.url
+      } ${getReqHeaderValue(req, 'content-type')}${os.EOL}${bodyStr}${os.EOL}${
         os.EOL
-      }${bodyStr}${os.EOL}${os.EOL}`
+      }`
       write('./assets/remote-log.txt', content)
     }
   } catch (e) {
@@ -71,6 +73,15 @@ function getReqBody(req) {
     fail(e)
   })
   return p
+}
+
+/**
+ * 获取请求content-type
+ * @param {http.IncomingMessage} req - 客户端请求
+ * @param {string} key - headers key
+ */
+function getReqHeaderValue(req, key) {
+  return req.headers[key]
 }
 
 function formatDateNow() {
