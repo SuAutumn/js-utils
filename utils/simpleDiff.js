@@ -1,3 +1,10 @@
+/**
+ * 比较两个数组，获取新增和删除的元素
+ * @param {Array<any>} newArr - 新数据
+ * @param {Array<any>} oldArr - 老数据
+ * @param {(val)=>any} getValCb - 动态获取新老比较的值
+ * @returns {Array<any>}
+ */
 export default function simpleDiff(
   newArr = [],
   oldArr = [],
@@ -10,11 +17,11 @@ export default function simpleDiff(
       return { data: item, type: 'delete' }
     })
   }
-  if (oldArr.length === 0) {
-    return newArr.map((item) => {
-      return { data: item, type: 'add' }
-    })
-  }
+  // if (oldArr.length === 0) {
+  //   return newArr.map((item) => {
+  //     return { data: item, type: 'add' }
+  //   })
+  // }
   let r = []
   let i = 0
   let index = -1 // 新元素在老元素中位置
