@@ -353,6 +353,16 @@ function listener() {
                       }
                     )
                     if (diffResult.length > 0) {
+                      // 忽略列表末尾删除的情况
+                      while (
+                        lastEle(diffResult).data === lastEle(target.list)
+                      ) {
+                        diffResult.pop()
+                        target.list.pop()
+                        if (diffResult.length === 0) break
+                      }
+                    }
+                    if (diffResult.length > 0) {
                       const title = `record time:${formatDate(
                         Date.now(),
                         'yyyy-MM-dd HH:mm:ss.S'
