@@ -352,7 +352,22 @@ function listener() {
                         }
                       }
                     )
+                    const title = `record time:${formatDate(
+                      Date.now(),
+                      'yyyy-MM-dd HH:mm:ss.S'
+                    )} new ${infoList.length} old ${target.list.length}${
+                      os.EOL
+                    }`
                     if (diffResult.length > 0) {
+                      Html.write(
+                        './assets/weibo-' + target.name + '.txt',
+                        title +
+                          JSON.stringify(infoList) +
+                          os.EOL +
+                          JSON.stringify(target.list) +
+                          os.EOL +
+                          os.EOL
+                      )
                       // 忽略列表末尾删除的情况
                       while (
                         lastEle(diffResult).data === lastEle(target.list)
@@ -363,12 +378,6 @@ function listener() {
                       }
                     }
                     if (diffResult.length > 0) {
-                      const title = `record time:${formatDate(
-                        Date.now(),
-                        'yyyy-MM-dd HH:mm:ss.S'
-                      )} new ${infoList.length} old ${target.list.length}${
-                        os.EOL
-                      }`
                       const content = diffResult
                         .map((item) => {
                           return `----${item.type}----${os.EOL}${
