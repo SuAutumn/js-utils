@@ -1,24 +1,56 @@
+import State from './State'
+import { SELF_CLOSE_TAGS } from './const'
+import HtmlNode from './HtmlNode'
+
+type SimpleFunction = (...args: any[]) => any
+
+interface HtmlParserEventParams extends Record<string, any> {
+  node: HtmlNode
+}
 export default class HtmlParser {
-  /**
-   * @param html {string, undefined}
-   */
-  constructor(html) {
+  /** 父node stack 用于关联父子关系 */
+  private parentNodeStack: HtmlNode[] = []
+
+  /** 原始html字符串 */
+  private html = ''
+
+  /** current text */
+  private text = ''
+
+  /** 解析之后的树结构 */
+  private tree: HtmlNode[] = []
+
+  /** 回调函数集合 */
+  private cbs: Record<string, SimpleFunction> = {}
+
+  /** 符号集合 eg: '' "" {} [] */
+  private symbols: string[] = []
+
+  /** 当前token状态 */
+  private status?: State
+
+  /** 当前指针位置 */
+  private offset = 0
+
+  /** 原始html长度 */
+  private length = 0
+
+  /** 一个新的标签开始的位置 */
+  private _start = 0
+  private _tagName?: string
+
+  constructor(html?: string) {
     if (typeof html === 'string') {
       this.setHtml(html)
     }
-    this.parentNodeStack = [] // 父node stack 用于关联父子关系
-    this.text = '' // current text
-    this.tree = [] // 解析之后的树结构
-    this.cbs = {}
-    this.symbols = [] // 存放js对称符号
   }
 
-  $on(eventName, cb) {
+  $on(eventName: string, cb: SimpleFunction) {
     this.cbs[eventName] = cb
   }
 
   // 支持事件 onClosedTag, onClosedTagName
-  $emit(eventName, params) {
+  $emit(eventName: string, params: HtmlParserEventParams) {
     if (typeof this.cbs[eventName] === 'function') {
       this.cbs[eventName](params)
     }
@@ -28,14 +60,14 @@ export default class HtmlParser {
    * 初始化状态
    * @param html {string} - raw html text
    */
-  setHtml(html) {
+  setHtml(html: string) {
     this.html = html
     this.status = this.initState(this.html)
-    this.offset = 0
+    // this.offset = 0
     this.length = this.html.length
   }
 
-  initState(html) {
+  initState(html: string) {
     if (html.charAt(0) === '<') {
       return State.OpenTag
     } else {
@@ -43,7 +75,7 @@ export default class HtmlParser {
     }
   }
 
-  handleOpenTag(c) {
+  handleOpenTag(c: string) {
     if (c === '<') {
       this._start = this.offset // 记录起始位置
     } else if (c === '!') {
@@ -66,14 +98,14 @@ export default class HtmlParser {
     }
   }
 
-  handleOpenTagName(c) {
+  handleOpenTagName(c: string) {
     if (HtmlParser.isAlphaChar(c)) {
       this.status = State.OpeningTagName
       this.backOffset()
     }
   }
 
-  handleOpeningTagName(c) {
+  handleOpeningTagName(c: string) {
     if (HtmlParser.isWhiteSpace(c) || c === '>' || c === '/') {
       // <div ...>
       this.status = State.ClosedTagName
@@ -84,8 +116,9 @@ export default class HtmlParser {
     }
   }
 
-  handleClosedTagName(c) {
-    const node = new HtmlNode(this._start, this.html)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  handleClosedTagName(_c: string) {
+    const node = new HtmlNode(this._start)
     node.setName(this.text)
     node.setTypeEle()
     this.resetText()
@@ -95,7 +128,7 @@ export default class HtmlParser {
     this.addNodeToParent(node)
   }
 
-  handleBeforeOpenAttributeName(c) {
+  handleBeforeOpenAttributeName(c: string) {
     // <div class="..." style="...">
     if (HtmlParser.isWhiteSpace(c)) {
       // ignore
@@ -112,7 +145,7 @@ export default class HtmlParser {
     }
   }
 
-  handleOpeningAttributeName(c) {
+  handleOpeningAttributeName(c: string) {
     if (HtmlParser.isWhiteSpace(c) || c === '=' || c === '/' || c === '>') {
       this.status = State.ClosedAttributeName
       this.backOffset()
@@ -122,7 +155,7 @@ export default class HtmlParser {
     }
   }
 
-  handleClosedAttributeName(c) {
+  handleClosedAttributeName(c: string) {
     const node = this.lastElement(this.parentNodeStack)
     node.setAttrName(this.text)
     this.resetText()
@@ -139,7 +172,7 @@ export default class HtmlParser {
     }
   }
 
-  handleBeforeOpenAttributeValue(c) {
+  handleBeforeOpenAttributeValue(c: string) {
     if (HtmlParser.isWhiteSpace(c) || c === '=') {
       // ignore
     } else if (c === '"' || c === "'") {
@@ -151,7 +184,7 @@ export default class HtmlParser {
     }
   }
 
-  handleOpeningAttributeValue(c) {
+  handleOpeningAttributeValue(c: string) {
     // class="xxxx"
     if (this.symbols.length > 0) {
       if (this.lastElement(this.symbols) === c) {
@@ -170,7 +203,8 @@ export default class HtmlParser {
     }
   }
 
-  handleClosingAttributeValue(c) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  handleClosingAttributeValue(_c: string) {
     const node = this.lastElement(this.parentNodeStack)
     node.setAttrValue(this.text)
     this.resetText()
@@ -178,7 +212,7 @@ export default class HtmlParser {
     this.backOffset()
   }
 
-  handleClosedAttributeValue(c) {
+  handleClosedAttributeValue(c: string) {
     if (HtmlParser.isWhiteSpace(c)) {
       this.status = State.BeforeOpenAttributeName
     } else if (c === '/') {
@@ -191,18 +225,19 @@ export default class HtmlParser {
     }
   }
 
-  handleBeforeCloseTag() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  handleBeforeCloseTag(_c: string) {
     this.status = State.ClosingTag
     this._tagName = this.lastElement(this.parentNodeStack).getName()
   }
 
-  handleClosingTag(c) {
+  handleClosingTag(c: string) {
     if (c === '>') {
       // <img xxxxx/> self close
       if (this.text === '') {
         this.status = State.ClosedTag
       } else {
-        if (SelfCloseTags.indexOf(this.text) === -1) {
+        if (SELF_CLOSE_TAGS.indexOf(this.text) === -1) {
           // 非自闭和标签
           if (this.text !== this._tagName) {
             this.fixOrderErrInParentStack(this.text)
@@ -225,7 +260,7 @@ export default class HtmlParser {
   }
 
   // >x
-  handleClosedTag(c) {
+  handleClosedTag(c: string) {
     const node = this.lastElement(this.parentNodeStack)
     if (node) {
       // <meta> 检查是否是自闭合标签
@@ -260,9 +295,9 @@ export default class HtmlParser {
     }
   }
 
-  handleText(c) {
+  handleText(c: string) {
     if (c === '<' || c === '') {
-      const node = new HtmlNode(this.offset - this.text.length, this.html)
+      const node = new HtmlNode(this.offset - this.text.length)
       node.setTypeText()
       node.setName(this.text)
       this.resetText()
@@ -276,9 +311,9 @@ export default class HtmlParser {
   }
 
   // <!DOCTYPE html>
-  handleOpenDoctype(c) {
+  handleOpenDoctype(c: string) {
     if (c === '>') {
-      const node = new HtmlNode(this._start, this.html)
+      const node = new HtmlNode(this._start)
       node.setTypeDoc()
       node.setName(this.html.slice(this._start, this.offset + 1))
       this.addNodeToParent(node)
@@ -287,9 +322,9 @@ export default class HtmlParser {
   }
 
   // html comment
-  handleOpenCommentTag(c) {
+  handleOpenCommentTag(c: string) {
     if (this.beforeChar() === '-' && c === '>') {
-      const node = new HtmlNode(this._start, this.html)
+      const node = new HtmlNode(this._start)
       node.setTypeComment()
       node.setName(this.html.slice(this._start, this.offset + 1))
       this.addNodeToParent(node)
@@ -297,7 +332,7 @@ export default class HtmlParser {
     }
   }
 
-  handleOpeningScript(c) {
+  handleOpeningScript(c: string) {
     if (c === "'" || c === '"') {
       this.lastElement(this.symbols) !== c
         ? this.symbols.push(c)
@@ -318,9 +353,6 @@ export default class HtmlParser {
   }
 
   exec() {
-    if (typeof this.html !== 'string') {
-      throw new Error('未设置html')
-    }
     while (this.offset <= this.length) {
       const c = this.html.charAt(this.offset)
       switch (this.status) {
@@ -397,26 +429,23 @@ export default class HtmlParser {
   /**
    * @param node {HtmlNode}
    */
-  addNodeToParent(node) {
+  addNodeToParent(node: HtmlNode) {
     const p = this.lastElement(this.parentNodeStack)
     if (p) {
-      p.children.push(node)
+      p.pushChild(node)
     }
     this.parentNodeStack.push(node)
   }
 
-  /**
-   * @return {HtmlNode, undefined}
-   */
-  popNodeFromParent() {
+  popNodeFromParent(): HtmlNode | undefined {
     const node = this.parentNodeStack.pop()
-    if (this.parentNodeStack.length === 0) {
+    if (this.parentNodeStack.length === 0 && node) {
       this.tree.push(node)
     }
     return node
   }
 
-  lastElement(arr) {
+  lastElement<T>(arr: T[]) {
     return arr[arr.length - 1]
   }
 
@@ -424,20 +453,20 @@ export default class HtmlParser {
     this.text = ''
   }
 
-  setTextByChar(c) {
+  setTextByChar(c: string) {
     this.text = this.text.concat(c)
   }
 
-  static isAlphaChar(c) {
+  static isAlphaChar(c: string) {
     const code = c.charCodeAt(0)
     return (code >= 97 && code <= 122) || (code >= 65 && code <= 90)
   }
 
-  static isWhiteSpace(c) {
+  static isWhiteSpace(c: string) {
     return c === ' ' || c === '\n' || c === '\t'
   }
 
-  setOffset(i) {
+  setOffset(i: number) {
     this.offset = i
   }
 
@@ -462,10 +491,7 @@ export default class HtmlParser {
     return text
   }
 
-  /**
-   * @param node {HtmlNode}
-   */
-  toStringHelper(node) {
+  toStringHelper(node: HtmlNode) {
     let text = ''
     if (node.isDocNode()) {
       text = node.getName()
@@ -478,11 +504,12 @@ export default class HtmlParser {
     }
     if (node.isEleNode()) {
       const name = node.getName()
-      const attrs = Object.keys(node.attrs).map((k) => {
-        if (node.attrs[k] === true) {
+      const nodeAttrs = node.getAttrs()
+      const attrs = Object.keys(nodeAttrs).map((k) => {
+        if (nodeAttrs[k] === true) {
           return k
         } else {
-          return `${k}="${node.attrs[k]}"`
+          return `${k}="${nodeAttrs[k]}"`
         }
       })
       text = '<' + name + (attrs.length > 0 ? ' ' + attrs.join(' ') : '')
@@ -494,8 +521,9 @@ export default class HtmlParser {
         text = text + '>'
       }
       // add children
-      if (node.children.length > 0) {
-        node.children.forEach((n) => {
+      const children = node.getChildren()
+      if (children.length > 0) {
+        children.forEach((n) => {
           text = text + this.toStringHelper(n)
         })
       }
@@ -504,7 +532,7 @@ export default class HtmlParser {
     return text
   }
 
-  fixOrderErrInParentStack(tagName) {
+  fixOrderErrInParentStack(tagName: string) {
     let len = this.parentNodeStack.length
     while (len > 0) {
       if (this.parentNodeStack[len - 1].getName() === tagName) {
@@ -514,7 +542,7 @@ export default class HtmlParser {
     }
     if (len === 0) {
       // 多余尾部标签 <div>xxxx</p></div>
-      const node = new HtmlNode(this._start, this.html)
+      const node = new HtmlNode(this._start)
       node.setName(tagName)
       node.setTypeEle()
       // 添加层级关系
@@ -525,139 +553,3 @@ export default class HtmlParser {
     }
   }
 }
-
-class HtmlNode {
-  static currentAttrName = ''
-  constructor(start) {
-    // this.html = html
-    this.start = start
-    this.end = start
-    this.name = ''
-    this.type = '' // comment element text
-    this.attrs = {}
-    this.children = []
-  }
-
-  // 单个连接字符
-  setName(name) {
-    this.name = name
-  }
-
-  getName() {
-    return this.name
-  }
-
-  setAttrName(name) {
-    this.attrs[name] = true
-    HtmlNode.currentAttrName = name
-  }
-
-  setAttrValue(value) {
-    if (HtmlNode.currentAttrName) {
-      this.attrs[HtmlNode.currentAttrName] = value
-    }
-  }
-
-  setEnd(end, html) {
-    this.end = end
-    this.rawText = html.slice(this.start, this.end + 1)
-  }
-
-  setStart(start) {
-    this.start = start
-  }
-
-  setTypeText() {
-    this.type = 'text'
-  }
-
-  isTextNode() {
-    return this.type === 'text'
-  }
-
-  setTypeEle() {
-    this.type = 'element'
-  }
-
-  isEleNode() {
-    return this.type === 'element'
-  }
-
-  setTypeComment() {
-    this.type = 'comment'
-  }
-
-  isCommentNode() {
-    return this.type === 'comment'
-  }
-
-  setTypeDoc() {
-    this.type = 'Doctype'
-  }
-
-  isDocNode() {
-    return this.type === 'Doctype'
-  }
-
-  // 自闭合标签
-  isSelfCloseTag() {
-    return SelfCloseTags.indexOf(this.name) > -1
-  }
-
-  // 标签内所有内容按照文本处理
-  isScript() {
-    if (this.name === 'script') {
-      return true
-    }
-  }
-
-  querySelect(cb) {
-    let r = null
-    for (let i = 0, len = this.children.length; i < len; i++) {
-      const node = this.children[i]
-      if (cb(node)) {
-        r = node
-      } else {
-        r = node.querySelect(cb)
-      }
-      if (r) break
-    }
-    return r
-  }
-
-  toString() {
-    return {
-      name: this.name,
-      type: this.type,
-      attrs: this.attrs,
-    }
-  }
-}
-
-class State {
-  static OpenTag = 0
-  static OpenTagName = 1
-  static OpeningTagName = 2
-  static ClosedTagName = 3
-
-  static BeforeOpenAttributeName = 4
-  static OpeningAttributeName = 5
-  static ClosedAttributeName = 6
-  static BeforeOpenAttributeValue = 7
-  static OpeningAttributeValue = 8
-  static ClosingAttributeValue = 9
-  static ClosedAttributeValue = 10
-
-  static BeforeCloseTag = 11
-  static ClosingTag = 12
-  static ClosedTag = 13
-
-  static Text = 14
-
-  static OpenDoctype = 15
-  static OpenCommentTag = 16
-
-  static OpeningScript = 17
-}
-
-const SelfCloseTags = ['meta', 'link', 'br', 'hr', 'img', 'input']
