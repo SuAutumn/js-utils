@@ -1,10 +1,17 @@
 import * as https from 'https'
 import * as fs from 'fs'
 import * as os from 'os'
+import * as path from 'path'
+import { fileURLToPath } from 'url'
 
 import HtmlParser from '../dist/mjs/HtmlParser.mjs'
 import formatDate from '../dist/mjs/formatDate.mjs'
 import simpleDiff from '../dist/mjs/simpleDiff.mjs'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+const STARTS = path.resolve(__dirname, 'starts.json')
 
 function getPromise() {
   let success, fail
@@ -265,62 +272,11 @@ class WeiboHtml {
     return info
   }
 }
-const targetList = [
-  {
-    url: 'https://weibo.com/u/1350995007?is_all=1',
-    output: './assets/weibo-naza.txt',
-    name: '古力娜扎',
-    list: null,
-  },
-  {
-    url: 'https://weibo.com/u/1669879400?is_all=1',
-    output: './assets/weibo-reba.txt',
-    name: '迪丽热巴',
-    list: null,
-  },
-  {
-    url: 'https://weibo.com/yangmiblog?is_all=1',
-    output: './assets/weibo-yangmi.txt',
-    name: '杨幂',
-    list: null,
-  },
-  {
-    url: 'https://weibo.com/u/1809054937',
-    output: './assets/weibo-liqin.txt',
-    name: '李沁',
-    list: null,
-  },
-  {
-    url: 'https://weibo.com/u/1624923463?is_all=1',
-    output: './assets/weibo-huachenyu.txt',
-    name: '华晨宇',
-    list: null,
-  },
-  {
-    url: 'https://weibo.com/u/1677856077?is_all=1',
-    output: './assets/weibo-zhangbichen.txt',
-    name: '张碧晨',
-    list: null,
-  },
-  {
-    url: 'https://weibo.com/u/1300419694?is_all=1',
-    output: './assets/weibo-songyi.txt',
-    name: '宋轶',
-    list: null,
-  },
-  {
-    url: 'https://weibo.com/xiaozhan1?is_all=1',
-    output: './assets/weibo-xiaozhan.txt',
-    name: '肖战',
-    list: null,
-  },
-  {
-    url: 'https://weibo.com/dengchao?is_all=1',
-    output: './assets/weibo-dengchao.txt',
-    name: '邓超',
-    list: null,
-  },
-]
+let targetList = getTargetFromFile(STARTS)
+fs.watchFile(STARTS, () => {
+  targetList = getTargetFromFile(STARTS) || targetList
+  console.log(targetList)
+})
 function listener() {
   // console.log('时间: ', formatDate(new Date(), 'MM-dd HH:mm:ss'))
   logger()
@@ -406,7 +362,7 @@ function listener() {
           './assets/weibo-error.txt',
           `时间${formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss.S')}${os.EOL}${
             e.message
-          }${os.EOL}${e.stack}${os.EOL}${os.EOL}`
+          }${os.EOL}${e.stack} ${h.url} ${os.EOL}${os.EOL}`
         )
       })
       .finally(() => {
@@ -443,4 +399,14 @@ function logger() {
     'memory now:',
     calc(mem.rss)
   )
+}
+
+function getTargetFromFile(filename) {
+  const content = fs.readFileSync(filename, { encoding: 'utf8' })
+  try {
+    return JSON.parse(content)
+  } catch (e) {
+    console.log('解析' + filename + '出错')
+  }
+  return []
 }
