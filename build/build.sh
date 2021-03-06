@@ -9,9 +9,14 @@ cd ..
 base=$(pwd)
 echo 脚本执行目录: $base
 # mkdir dist
-rm -rf dist
-mkdir dist
-mkdir dist/mjs
+if [ ! -d $base/dist ];then
+  mkdir dist
+fi
+if [ ! -d $base/dist/mjs ];then
+  mkdir dist/mjs
+else
+  rm -rf dist/mjs/*
+fi
 
 for filename in $(ls ./utils)
 do
