@@ -1,5 +1,11 @@
-import HtmlParser from '../utils/HtmlParser.js'
+import HtmlParser from '../utils/html-paser/HtmlParser'
 
+test('html empty', () => {
+  const p = new HtmlParser()
+  const tree = p.exec()
+  expect(tree.length).toBe(0)
+  expect(p.toString()).toEqual('')
+})
 test('HtmlParser: <!DOCTYPE html>', () => {
   const p = new HtmlParser(`<!DOCTYPE html>`)
   const tree = p.exec()
@@ -62,4 +68,11 @@ test('HtmlParser: <div><span>hello</p><div>', () => {
   expect(p.toString()).toEqual(
     '<div><span>hello<p></p><div></div></span></div>'
   )
+})
+
+test('<script>', () => {
+  const text = `<script>var a = document.appendchild('<script>var a = 1;</script>'); function b(){};</script>`
+  const p = new HtmlParser(text)
+  p.exec()
+  expect(p.toString()).toEqual(text)
 })
