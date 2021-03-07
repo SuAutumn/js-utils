@@ -7,6 +7,11 @@ type SimpleFunction = (...args: any[]) => any
 interface HtmlParserEventParams extends Record<string, any> {
   node: HtmlNode
 }
+
+enum EventName {
+  OnClosedTag = 'onClosedTag',
+  onOpenedTag = 'onOpenedTag',
+}
 export default class HtmlParser {
   /** 父node stack 用于关联父子关系 */
   private parentNodeStack: HtmlNode[] = []
@@ -45,12 +50,12 @@ export default class HtmlParser {
     }
   }
 
-  $on(eventName: string, cb: SimpleFunction) {
+  $on(eventName: EventName, cb: SimpleFunction) {
     this.cbs[eventName] = cb
   }
 
   // 支持事件 onClosedTag, onClosedTagName
-  $emit(eventName: string, params: HtmlParserEventParams) {
+  $emit(eventName: EventName, params: HtmlParserEventParams) {
     if (typeof this.cbs[eventName] === 'function') {
       this.cbs[eventName](params)
     }
@@ -98,12 +103,13 @@ export default class HtmlParser {
     }
   }
 
-  handleOpenTagName(c: string) {
-    if (HtmlParser.isAlphaChar(c)) {
-      this.status = State.OpeningTagName
-      this.backOffset()
-    }
-  }
+  // 即将打开tag名
+  // handleOpenTagName(c: string) {
+  //   if (HtmlParser.isAlphaChar(c)) {
+  //     this.status = State.OpeningTagName
+  //     this.backOffset()
+  //   }
+  // }
 
   handleOpeningTagName(c: string) {
     if (HtmlParser.isWhiteSpace(c) || c === '>' || c === '/') {
@@ -157,7 +163,7 @@ export default class HtmlParser {
 
   handleClosedAttributeName(c: string) {
     const node = this.lastElement(this.parentNodeStack)
-    node.setAttrName(this.text)
+    node?.setAttrName(this.text)
     this.resetText()
     if (HtmlParser.isWhiteSpace(c)) {
       // <div class style="...">
@@ -206,7 +212,7 @@ export default class HtmlParser {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   handleClosingAttributeValue(_c: string) {
     const node = this.lastElement(this.parentNodeStack)
-    node.setAttrValue(this.text)
+    node?.setAttrValue(this.text)
     this.resetText()
     this.status = State.ClosedAttributeValue
     this.backOffset()
@@ -228,7 +234,7 @@ export default class HtmlParser {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   handleBeforeCloseTag(_c: string) {
     this.status = State.ClosingTag
-    this._tagName = this.lastElement(this.parentNodeStack).getName()
+    this._tagName = this.lastElement(this.parentNodeStack)?.getName()
   }
 
   handleClosingTag(c: string) {
@@ -275,13 +281,13 @@ export default class HtmlParser {
         // 收尾
         this.popNodeFromParent()
         node.setEnd(this.offset - 1, this.html)
-        this.$emit('onClosedTag', { node })
+        this.$emit(EventName.OnClosedTag, { node })
       } else {
-        this.$emit('onOpenedTag', { node })
+        this.$emit(EventName.onOpenedTag, { node })
       }
     }
     const pNode = this.lastElement(this.parentNodeStack)
-    if (node === pNode && pNode.isScript()) {
+    if (node === pNode && pNode?.isScript()) {
       // node === pNode 说明没有移除stack元素，即script node 准备添加script内容
       this.status = State.OpeningScript
       this.backOffset()
@@ -368,9 +374,9 @@ export default class HtmlParser {
         case State.OpenTag:
           this.handleOpenTag(c)
           break
-        case State.OpenTagName:
-          this.handleOpenTagName(c)
-          break
+        // case State.OpenTagName:
+        //   this.handleOpenTagName(c)
+        //   break
         case State.OpeningTagName:
           this.handleOpeningTagName(c)
           break
@@ -419,7 +425,7 @@ export default class HtmlParser {
         const node = this.parentNodeStack[i - 1]
         this.popNodeFromParent()
         node.setEnd(this.length - 1, this.html)
-        this.$emit('onClosedTag', { node })
+        this.$emit(EventName.OnClosedTag, { node })
       }
     }
     return this.tree.slice(0)
@@ -445,7 +451,7 @@ export default class HtmlParser {
     return node
   }
 
-  lastElement<T>(arr: T[]) {
+  lastElement<T>(arr: T[]): T | undefined {
     return arr[arr.length - 1]
   }
 

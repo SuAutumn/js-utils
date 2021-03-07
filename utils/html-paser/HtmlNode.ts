@@ -47,9 +47,9 @@ export default class HtmlNode {
     this.rawText = html.slice(this.start, this.end + 1)
   }
 
-  setStart(start: number) {
-    this.start = start
-  }
+  // setStart(start: number) {
+  //   this.start = start
+  // }
 
   setTypeText() {
     this.type = HtmlNodeType.Text
@@ -117,13 +117,5 @@ export default class HtmlNode {
       if (r) break
     }
     return r
-  }
-
-  toString() {
-    return {
-      name: this.name,
-      type: this.type,
-      attrs: this.attrs,
-    }
   }
 }
