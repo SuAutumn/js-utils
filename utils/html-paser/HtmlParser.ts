@@ -1,6 +1,6 @@
 import State from './State'
 import { SELF_CLOSE_TAGS } from './const'
-import HtmlNode from './HtmlNode'
+import HtmlNode, { HtmlNodeType } from './HtmlNode'
 
 type SimpleFunction = (...args: any[]) => any
 
@@ -124,9 +124,9 @@ export default class HtmlParser {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   handleClosedTagName(_c: string) {
-    const node = new HtmlNode(this._start)
-    node.setName(this.text)
-    node.setTypeEle()
+    const node = new HtmlNode(this.text, HtmlNodeType.Element, this._start)
+    // node.setName(this.text)
+    // node.setTypeEle()
     this.resetText()
     this.status = State.BeforeOpenAttributeName
     this.backOffset()
@@ -303,9 +303,13 @@ export default class HtmlParser {
 
   handleText(c: string) {
     if (c === '<' || c === '') {
-      const node = new HtmlNode(this.offset - this.text.length)
-      node.setTypeText()
-      node.setName(this.text)
+      const node = new HtmlNode(
+        this.text,
+        HtmlNodeType.Text,
+        this.offset - this.text.length
+      )
+      // node.setTypeText()
+      // node.setName(this.text)
       this.resetText()
       this.addNodeToParent(node)
       this.status = State.ClosedTag
@@ -319,9 +323,13 @@ export default class HtmlParser {
   // <!DOCTYPE html>
   handleOpenDoctype(c: string) {
     if (c === '>') {
-      const node = new HtmlNode(this._start)
-      node.setTypeDoc()
-      node.setName(this.html.slice(this._start, this.offset + 1))
+      const node = new HtmlNode(
+        this.html.slice(this._start, this.offset + 1),
+        HtmlNodeType.Doctype,
+        this._start
+      )
+      // node.setTypeDoc()
+      // node.setName(this.html.slice(this._start, this.offset + 1))
       this.addNodeToParent(node)
       this.status = State.ClosedTag
     }
@@ -330,9 +338,13 @@ export default class HtmlParser {
   // html comment
   handleOpenCommentTag(c: string) {
     if (this.beforeChar() === '-' && c === '>') {
-      const node = new HtmlNode(this._start)
-      node.setTypeComment()
-      node.setName(this.html.slice(this._start, this.offset + 1))
+      const node = new HtmlNode(
+        this.html.slice(this._start, this.offset + 1),
+        HtmlNodeType.Comment,
+        this._start
+      )
+      // node.setTypeComment()
+      // node.setName(this.html.slice(this._start, this.offset + 1))
       this.addNodeToParent(node)
       this.status = State.ClosedTag
     }
@@ -548,9 +560,9 @@ export default class HtmlParser {
     }
     if (len === 0) {
       // 多余尾部标签 <div>xxxx</p></div>
-      const node = new HtmlNode(this._start)
-      node.setName(tagName)
-      node.setTypeEle()
+      const node = new HtmlNode(tagName, HtmlNodeType.Element, this._start)
+      // node.setName(tagName)
+      // node.setTypeEle()
       // 添加层级关系
       this.addNodeToParent(node)
     }

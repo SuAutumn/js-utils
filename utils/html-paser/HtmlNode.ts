@@ -1,6 +1,7 @@
 import { SELF_CLOSE_TAGS } from './const'
 
-enum HtmlNodeType {
+export enum HtmlNodeType {
+  Default,
   Text,
   Comment,
   Element,
@@ -13,17 +14,19 @@ export default class HtmlNode {
   private end = 0
   private name = ''
 
-  private type?: HtmlNodeType
+  private type = HtmlNodeType.Default
   private attrs: Record<string, string | boolean> = {}
   private children: HtmlNode[] = []
   private rawText?: string
-  constructor(start: number) {
+  constructor(name: string, type: HtmlNodeType, start: number) {
+    this.name = name
+    this.type = type
     this.start = start
     this.end = start
   }
 
   /** 单个连接字符 */
-  setName(name: string) {
+  private setName(name: string) {
     this.name = name
   }
 
@@ -51,7 +54,7 @@ export default class HtmlNode {
   //   this.start = start
   // }
 
-  setTypeText() {
+  private setTypeText() {
     this.type = HtmlNodeType.Text
   }
 
@@ -59,7 +62,7 @@ export default class HtmlNode {
     return this.type === HtmlNodeType.Text
   }
 
-  setTypeEle() {
+  private setTypeEle() {
     this.type = HtmlNodeType.Element
   }
 
@@ -67,7 +70,7 @@ export default class HtmlNode {
     return this.type === HtmlNodeType.Element
   }
 
-  setTypeComment() {
+  private setTypeComment() {
     this.type = HtmlNodeType.Comment
   }
 
@@ -75,7 +78,7 @@ export default class HtmlNode {
     return this.type === HtmlNodeType.Comment
   }
 
-  setTypeDoc() {
+  private setTypeDoc() {
     this.type = HtmlNodeType.Doctype
   }
 

@@ -13,16 +13,13 @@ test('<!DOCTYPE html>', () => {
   const node = tree[0]
   expect(node.getName()).toEqual(p.html)
   expect(node.isDocNode()).toBeTruthy()
-  expect(node.start).toBe(0)
-  expect(node.end).toBe(p.html.length - 1)
   expect(p.toString()).toEqual(p.html)
 })
 
-test('<!-- comment --><!-- comment -->', () => {
-  const p = new HtmlParser(`<!-- comment --><!-- comment -->`)
+test('<!-- comment -->', () => {
+  const p = new HtmlParser(`<!-- comment -->`)
   const tree = p.exec()
-  expect(tree.length).toBe(2)
-  expect(tree[0].getName()).toEqual('<!-- comment -->')
+  expect(tree[0].getName()).toEqual(p.html)
   expect(tree[0].isCommentNode()).toBeTruthy()
   expect(p.toString()).toEqual(p.html)
 })
@@ -34,16 +31,7 @@ test('text', () => {
   const node = tree[0]
   expect(node.getName()).toEqual(p.html)
   expect(node.isTextNode()).toBeTruthy()
-  expect(node.start).toBe(0)
-  expect(node.end).toBe(p.html.length - 1)
   expect(p.toString()).toEqual(p.html)
-})
-
-test('attributes', () => {
-  const p = new HtmlParser(
-    `<div class="bg-white"><div class="t" style="color: red;"><video autoplay ></video><img src="../1.png"/ width><input type="file" width/><input type></div></div>`
-  )
-  const tree = p.exec()
 })
 
 test('attributes: <div class="bg-white">', () => {
@@ -58,11 +46,10 @@ test('attributes: <div class="bg-white" test>', () => {
   expect(node.getAttrs()).toEqual({ class: 'bg-white', test: true })
 })
 
-
 test('attributes: <video autoplay class= "video" a=b>', () => {
   const p = new HtmlParser(`<video autoplay class= "video" a=b>`)
   const node = p.exec()[0]
-  expect(node.getAttrs()).toEqual({ autoplay: true, class: "video", a: 'b' })
+  expect(node.getAttrs()).toEqual({ autoplay: true, class: 'video', a: 'b' })
   expect(p.toString()).toEqual(`<video autoplay class="video" a="b"></video>`)
 })
 
@@ -72,14 +59,13 @@ test('attributes: <video autoplay >', () => {
   expect(node.getAttrs()).toEqual({ autoplay: true })
 })
 
-
 test('attributes: <video autoplay />', () => {
   const p = new HtmlParser(`<video autoplay />`)
   const node = p.exec()[0]
   expect(node.getAttrs()).toEqual({ autoplay: true })
 })
 
-test('HtmlParser: <div><span>hello</p><div>', () => {
+test('not complete <span> & </p>: <div><span>hello</p><div>', () => {
   const text = '<div><span>hello</p><div>'
   const p = new HtmlParser(text)
   p.exec()
@@ -102,21 +88,21 @@ test('<br />', () => {
   expect(p.toString()).toEqual('<br/>')
 })
 
-test('$on & $emit', () => {
+test('$on & $emit & querySelect()', () => {
   const text = '<div class="parent"><div class="item"></div></div>'
   const p = new HtmlParser(text)
   p.$on('onClosedTag', ({ node }) => {
     if (node.getAttrs().class === 'parent') {
-      node.querySelect(n => n.getAttrs().class === 'item')
+      node.querySelect((n) => n.getAttrs().class === 'item')
     }
     if (node.getAttrs().class === 'parent') {
-      node.querySelect(n => n.getAttrs().class === 'wrong')
+      node.querySelect((n) => n.getAttrs().class === 'wrong')
     }
   })
   p.exec()
 })
 
-test('Uppercase', () => {
+test('Uppercase <Router>', () => {
   const p = new HtmlParser('<Router />')
   p.exec()
   expect(p.toString()).toEqual('<Router></Router>')
