@@ -21,12 +21,17 @@ export default class HtmlNode {
   private attrs: Record<string, string | boolean> = {}
   private children: HtmlNode[] = []
   private rawText?: string
+  /**
+   * 创建node
+   * @param name 标签名称
+   * @param type 标签类型
+   * @param start 在原始文本开始位置
+   */
   constructor(
     readonly name: string,
     readonly type: HtmlNodeType,
     readonly start: number
   ) {
-    /** 标签名称 */
     this.name = name
     this.type = type
     this.start = start
@@ -74,7 +79,7 @@ export default class HtmlNode {
     return SELF_CLOSE_TAGS.indexOf(this.name) > -1
   }
 
-  /** <script>标签内所有内容按照文本处理 */
+  /** 是否是<script>标签，如果是则标签内所有内容按照文本处理 */
   isScript() {
     return this.name === 'script'
   }
