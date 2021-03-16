@@ -1,33 +1,36 @@
 import { SELF_CLOSE_TAGS } from './const'
 
 export enum HtmlNodeType {
+  /** 初始值 */
   Default,
+  /** 文本 */
   Text,
+  /** 注释 */
   Comment,
+  /** html 标签 */
   Element,
+  /** 文档类型 标签 */
   Doctype,
 }
 
 export default class HtmlNode {
+  /** 记录标签属性 */
   private static currentAttrName = ''
-  private start = 0
   private end = 0
-  private name = ''
 
-  private type = HtmlNodeType.Default
   private attrs: Record<string, string | boolean> = {}
   private children: HtmlNode[] = []
   private rawText?: string
-  constructor(name: string, type: HtmlNodeType, start: number) {
+  constructor(
+    readonly name: string,
+    readonly type: HtmlNodeType,
+    readonly start: number
+  ) {
+    /** 标签名称 */
     this.name = name
     this.type = type
     this.start = start
     this.end = start
-  }
-
-  /** 单个连接字符 */
-  private setName(name: string) {
-    this.name = name
   }
 
   getName() {
@@ -50,36 +53,16 @@ export default class HtmlNode {
     this.rawText = html.slice(this.start, this.end + 1)
   }
 
-  // setStart(start: number) {
-  //   this.start = start
-  // }
-
-  private setTypeText() {
-    this.type = HtmlNodeType.Text
-  }
-
   isTextNode() {
     return this.type === HtmlNodeType.Text
-  }
-
-  private setTypeEle() {
-    this.type = HtmlNodeType.Element
   }
 
   isEleNode() {
     return this.type === HtmlNodeType.Element
   }
 
-  private setTypeComment() {
-    this.type = HtmlNodeType.Comment
-  }
-
   isCommentNode() {
     return this.type === HtmlNodeType.Comment
-  }
-
-  private setTypeDoc() {
-    this.type = HtmlNodeType.Doctype
   }
 
   isDocNode() {
