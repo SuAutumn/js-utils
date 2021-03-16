@@ -1,21 +1,25 @@
 import * as http from 'http'
 import * as os from 'os'
 import * as fs from 'fs'
+import * as url from 'url'
 import formatDate from '../dist/mjs/formatDate.mjs'
 
 const serve = http.createServer(async (req, res) => {
   logger()
   req.setEncoding('utf8')
+  // console.log(req.headers)
   try {
     const bodyStr = await getReqBody(req)
+    let content = `${formatDateNow()}${os.EOL}${req.url} ${getReqHeaderValue(
+      req,
+      'content-type'
+    )}${os.EOL}`
     if (bodyStr.length > 0) {
-      const content = `${formatDateNow()}${os.EOL}${
-        req.url
-      } ${getReqHeaderValue(req, 'content-type')}${os.EOL}${bodyStr}${os.EOL}${
-        os.EOL
-      }`
-      write('./assets/remote-log.txt', content)
+      content += `${JSON.stringify(bodyStr)}${os.EOL}${os.EOL}`
+    } else {
+      content += os.EOL
     }
+    write('./assets/remote-log.txt', content)
   } catch (e) {
     write(
       './assets/remote-log-error.txt',
@@ -25,6 +29,14 @@ const serve = http.createServer(async (req, res) => {
     )
   }
   res.statusCode = 200
+  let origin = '*'
+  if (req.headers.referer) {
+    origin = new url.URL(req.headers.referer).origin
+  }
+  res.setHeader('Access-Control-Allow-Origin', origin)
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET')
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.end('done.')
 })
 
