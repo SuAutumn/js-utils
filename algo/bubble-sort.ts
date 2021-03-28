@@ -112,25 +112,51 @@ function myQuickSort(list: number[], res: number[] = []) {
 
 /**
  * 参照网上实现原地交换快速排序
+ * 使用递归实现
  */
-function quickSort(list: number[]) {
-  const newList = list.slice(0)
-  const len = newList.length
-  if (len === 0) return newList
+function quickSort(list: number[], start?: number, end?: number) {
+  if (list.length === 0) return
 
   /** 双向索引 */
-  let i = 0
-  let j = len - 1
+  let i = start || 0
+  let j = end || list.length - 1
+
+  let postive = false // 是否正向查找数据
+  const val = list[i]
+
+  start = i
+  end = j
 
   while (i < j) {
-    if (newList[i] > newList[j]) {
-      const val = newList[j]
-      newList[j] = newList[i]
-      newList[i] = val
-      i++
+    /** 正向查找 */
+    if (postive) {
+      if (list[i] > val) {
+        list[j] = list[i]
+        list[i] = val
+        j--
+        postive = false
+      } else {
+        i++
+        postive = true
+      }
     } else {
-      j--
+      /** 反向查找 */
+      if (val > list[j]) {
+        list[i] = list[j]
+        list[j] = val
+        i++
+        postive = true
+      } else {
+        j--
+        postive = false
+      }
     }
+  }
+  if (start < i) {
+    quickSort(list, start, i)
+  }
+  if (end > i + 1) {
+    quickSort(list, i + 1, end)
   }
 }
 
@@ -139,18 +165,23 @@ function quickSort(list: number[]) {
   for (let i = 0; i < len; i++) {
     test.push(Math.floor(Math.random() * len * 10))
   }
+
   console.time(`myQuickSort ${len}`)
   count = 0
   myQuickSort(test)
   console.log('myQuickSort:', count)
   console.timeEnd(`myQuickSort ${len}`)
 
-  console.time(`Sort ${len}`)
-  count = 0
-  test.sort((v1, v2) => {
-    count++
-    return v2 - v1
-  })
-  console.log('Sort:', count)
-  console.timeEnd(`Sort ${len}`)
+  console.time(`QuickSort ${len}`)
+  quickSort(test)
+  console.timeEnd(`QuickSort ${len}`)
+
+  // console.time(`Sort ${len}`)
+  // count = 0
+  // test.sort((v1, v2) => {
+  //   count++
+  //   return v2 - v1
+  // })
+  // console.log('Sort:', count)
+  // console.timeEnd(`Sort ${len}`)
 })
