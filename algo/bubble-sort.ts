@@ -114,18 +114,16 @@ function myQuickSort(list: number[], res: number[] = []) {
  * 参照网上实现原地交换快速排序
  * 使用递归实现
  */
-function quickSort(list: number[], start?: number, end?: number) {
+function quickSort(list: number[], start: number, end: number) {
   if (list.length === 0) return
 
   /** 双向索引 */
-  let i = start || 0
-  let j = end || list.length - 1
+  let i = start
+  let j = end
+  if (i >= j) return
 
   let postive = false // 是否正向查找数据
   const val = list[i]
-
-  start = i
-  end = j
 
   while (i < j) {
     /** 正向查找 */
@@ -152,15 +150,11 @@ function quickSort(list: number[], start?: number, end?: number) {
       }
     }
   }
-  if (start < i) {
-    quickSort(list, start, i)
-  }
-  if (end > i + 1) {
-    quickSort(list, i + 1, end)
-  }
+  quickSort(list, start, i)
+  quickSort(list, i + 1, end)
 }
 
-;[10, 100, 1000, 10000, 100000, 1000000].forEach((len) => {
+;[10, 100, 1000, 10000, 100000, 1000000, 10000000].forEach((len) => {
   const test = []
   for (let i = 0; i < len; i++) {
     test.push(Math.floor(Math.random() * len * 10))
@@ -173,7 +167,7 @@ function quickSort(list: number[], start?: number, end?: number) {
   console.timeEnd(`myQuickSort ${len}`)
 
   console.time(`QuickSort ${len}`)
-  quickSort(test)
+  quickSort(test, 0, test.length - 1)
   console.timeEnd(`QuickSort ${len}`)
 
   // console.time(`Sort ${len}`)
