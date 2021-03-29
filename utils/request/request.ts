@@ -1,7 +1,7 @@
 import * as https from 'https'
 import * as http from 'http'
-import genPromise from './genPromise.js'
-import formatDate from './formatDate'
+import genPromise from '../genPromise.js'
+import formatDate from '../formatDate'
 import * as fs from 'fs'
 import * as os from 'os'
 
