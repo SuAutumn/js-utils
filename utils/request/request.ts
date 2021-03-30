@@ -7,24 +7,26 @@ import * as os from 'os'
 
 interface RequestOptions extends https.RequestOptions {}
 
-interface Response<T> {
-  data: T
-  status?: number
-  message?: string
-}
-
 const LOG_FILENAME = './assets/socket-error.txt'
 function request(
   url: string,
   options: https.RequestOptions
-): Promise<Response<string>> {
-  const { p, success, fail } = genPromise<Response<string>>()
-  const response: Response<string> = { data: '' }
+): Promise<http.IncomingMessage> {
+  const { p, success, fail } = genPromise<http.IncomingMessage>()
   const req = https.request(url, options, async (res) => {
-    response.status = res.statusCode
-    res.on('end', () => success(response))
+    res.on('data', (data) => {
+      console.log(data)
+    })
+    res.on('end', () => {
+      console.log('end')
+      success(res)
+    })
+    res.on('close', () => {
+      console.log('close')
+    })
     try {
-      response.data = await getReqBody(res)
+      console.log(await getReqBody(res))
+      console.log('get body')
     } catch (e) {
       console.log('get body error: ', e)
     }
@@ -71,8 +73,8 @@ function request(
 }
 export async function get(
   url: string,
-  options: RequestOptions
-): Promise<Response<string>> {
+  options?: RequestOptions
+): Promise<http.IncomingMessage> {
   return await request(url, { ...options, method: 'GET' })
 }
 
@@ -103,23 +105,4 @@ function log(filename: string, ...args: Array<string | number>) {
   s.end()
 }
 
-function _test() {
-  get('https://weibo.com/u/1300419694?is_all=1', {
-    headers: {
-      cookie: [
-        'SUB=_2A25NNyDoDeRhGeNJ61QW-SvNwzqIHXVuRRUgrDV8PUNbmtAfLXf_kW9NSBXBn1Yh9I4ChnnjfQMok6Du54vfVjhR',
-        'SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WF0fmhMbsPYJ77qT22HzsTo5NHD95QfS05cS0.feKncWs4Dqcj1-NHWUPxfdgREeh2feh.t',
-      ].join(';'),
-    },
-    rejectUnauthorized: false,
-  })
-    .then((res) => {
-      console.log(res.data.length, Buffer.from(res.data).length / 1024 + 'kb')
-    })
-    .catch((e: Error) => {
-      console.log(e)
-    })
-  setTimeout(_test, 3 * 1000)
-}
-
-_test()
+get('https://jzt.csehe.com/api/v2/bind_status')
