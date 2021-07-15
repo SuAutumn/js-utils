@@ -10,10 +10,8 @@ const serve = http.createServer(async (req, res) => {
   // console.log(req.headers)
   try {
     const bodyStr = await getReqBody(req)
-    let content = `${formatDateNow()}${os.EOL}${req.url} ${getReqHeaderValue(
-      req,
-      'content-type'
-    )}${os.EOL}`
+    let content = [formatDateNow(), `${req.url} ${req.method} `].join(os.EOL)
+    // content += Object.entries(req.headers).join(os.EOL)
     if (bodyStr.length > 0) {
       content += `${JSON.stringify(bodyStr)}${os.EOL}${os.EOL}`
     } else {
@@ -34,9 +32,8 @@ const serve = http.createServer(async (req, res) => {
     origin = new url.URL(req.headers.referer).origin
   }
   res.setHeader('Access-Control-Allow-Origin', origin)
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET')
-  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, x-request-with')
   res.end('done.')
 })
 
